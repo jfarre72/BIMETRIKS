@@ -27,6 +27,25 @@ export interface Profile {
   role: "ADMIN" | "CONSULTANT" | "CLIENT";
 }
 
+/** Responsable configurable (no es un usuario de login). */
+export interface Person {
+  id: string;
+  name: string;
+  role: string | null;
+  sort_order?: number;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  detail: string | null;
+  assignee: string | null;
+  label: string | null;
+  due_date: string | null;
+  done: boolean;
+  created_at: string;
+}
+
 export interface Requirement {
   id: string;
   code: string;
@@ -49,8 +68,8 @@ export interface Requirement {
   type?: ReqType | null;
   priority?: ReqPriority | null;
   status?: ReqStatus | null;
-  assignee?: Profile | null;
-  validator?: Profile | null;
+  assignee?: Person | null;
+  validator?: Person | null;
   consumed_hours?: number;
   sprint?: { id: string; name: string } | null;
 }
@@ -109,6 +128,6 @@ export interface Catalogs {
   statuses: ReqStatus[];
   priorities: ReqPriority[];
   types: ReqType[];
-  people: Profile[];
+  people: Person[];
   sprints: Pick<Sprint, "id" | "name" | "status">[];
 }

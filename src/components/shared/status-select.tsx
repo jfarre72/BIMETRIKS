@@ -15,17 +15,19 @@ export function StatusSelect({
   value,
   statuses,
   sprintId = null,
+  estimatedHours = 0,
 }: {
   requirementId: string;
   value: string | null;
   statuses: ReqStatus[];
   sprintId?: string | null;
+  estimatedHours?: number;
 }) {
   const router = useRouter();
   const [current, setCurrent] = useState(value ?? "");
   const [isPending, startTransition] = useTransition();
   const [finalOpen, setFinalOpen] = useState(false);
-  const [hours, setHours] = useState("");
+  const [hours, setHours] = useState(String(estimatedHours || ""));
   const [saving, setSaving] = useState(false);
   const color = statuses.find((s) => s.id === current)?.color ?? "#64748B";
 
@@ -37,7 +39,7 @@ export function StatusSelect({
       await updateRequirementField(requirementId, "status_id", next);
       router.refresh();
     });
-    if (isFinal) setFinalOpen(true);
+    if (isFinal) { setHours(String(estimatedHours || "")); setFinalOpen(true); }
   }
 
   async function saveHours(e: React.FormEvent) {
@@ -72,15 +74,12 @@ export function StatusSelect({
 
       <Modal open={finalOpen} onClose={() => setFinalOpen(false)} title="Horas reales al finalizar">
         <form onSubmit={saveHours} className="space-y-3" onClick={(e) => e.stopPropagation()}>
-          <p className="text-sm text-muted">
-            Registrá las horas reales que llevó este requerimiento. Se cargan{sprintId ? " en su sprint" : ""}.
-          </p>
+          <p className="text-sm text-muted">Por defecto se cargan las horas estimadas. Podés ajustarlas.</p>
           <div>
             <Label>Horas reales</Label>
-            <Input type="number" step="0.25" min="0.25" value={hours} onChange={(e) => setHours(e.target.value)} autoFocus required />
+            <Input type="number" step="0.25" min="0" value={hours} onChange={(e) => setHours(e.target.value)} autoFocus required />
           </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={() => setFinalOpen(false)}>Omitir</Button>
+          <div className="flex justify-end">
             <Button type="submit" disabled={saving}>{saving && <Loader2 size={15} className="animate-spin" />} Guardar horas</Button>
           </div>
         </form>

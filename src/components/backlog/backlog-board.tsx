@@ -25,7 +25,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Layers, Inbox, Trash2, Pencil, ExternalLink, ChevronDown, ChevronRight } from "lucide-react";
 import { Card } from "@/components/ui";
 import { PriorityBadge } from "@/components/shared/req-badges";
-import { StatusSelect } from "@/components/shared/status-select";
+import { StatusStepper } from "@/components/shared/status-stepper";
 import { SprintStatusBadge } from "@/components/shared/sprint-status";
 import { formatHours } from "@/lib/utils";
 import { moveRequirement, deleteRequirement } from "@/lib/actions";
@@ -239,7 +239,7 @@ function GroupTable({
                     <th className="px-2 py-2">Título</th>
                     <th className="w-40 px-2 py-2">Área</th>
                     <th className="w-24 px-2 py-2">Prioridad</th>
-                    <th className="w-40 px-2 py-2">Estado</th>
+                    <th className="w-52 px-2 py-2">Estado</th>
                     <th className="w-16 px-2 py-2 text-right">Est.</th>
                     <th className="w-16 px-2 py-2 text-right">Cons.</th>
                     <th className="w-16 px-2 py-2"></th>
@@ -318,7 +318,7 @@ function Row({
       <td className="whitespace-nowrap px-2 py-2 text-muted">{req.area?.name ?? "—"}</td>
       <td className="px-2 py-2"><PriorityBadge priority={req.priority} /></td>
       <td className="px-2 py-2">
-        <StatusSelect requirementId={req.id} value={req.status_id} statuses={statuses} sprintId={req.sprint?.id ?? null} />
+        <StatusStepper requirementId={req.id} value={req.status_id} statuses={statuses} sprintId={req.sprint?.id ?? null} estimatedHours={Number(req.estimated_hours ?? 0)} />
       </td>
       <td className="px-2 py-2 text-right tabular text-muted">{formatHours(req.estimated_hours)}</td>
       <td className="px-2 py-2 text-right tabular font-medium">{formatHours(req.consumed_hours)}</td>

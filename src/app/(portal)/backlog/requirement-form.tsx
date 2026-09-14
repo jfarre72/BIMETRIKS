@@ -132,13 +132,13 @@ export function RequirementForm({
           <Field label="Responsable">
             <Select name="assignee_id" defaultValue={requirement?.assignee_id ?? ""}>
               <option value="">—</option>
-              {catalogs.people.map((p) => <option key={p.id} value={p.id}>{p.full_name ?? p.username}</option>)}
+              {catalogs.people.map((p) => <option key={p.id} value={p.id}>{p.role ? `${p.name} · ${p.role}` : p.name}</option>)}
             </Select>
           </Field>
           <Field label="Responsable de validación">
             <Select name="validator_id" defaultValue={requirement?.validator_id ?? ""}>
               <option value="">—</option>
-              {catalogs.people.map((p) => <option key={p.id} value={p.id}>{p.full_name ?? p.username}</option>)}
+              {catalogs.people.map((p) => <option key={p.id} value={p.id}>{p.role ? `${p.name} · ${p.role}` : p.name}</option>)}
             </Select>
           </Field>
         </div>

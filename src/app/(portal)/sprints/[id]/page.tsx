@@ -7,7 +7,7 @@ import { Card, CardBody, CardHeader, CardTitle, ProgressBar, EmptyState, Badge }
 import { StatCard } from "@/components/ui/stat-card";
 import { SprintStatusBadge } from "@/components/shared/sprint-status";
 import { PriorityBadge } from "@/components/shared/req-badges";
-import { StatusSelect } from "@/components/shared/status-select";
+import { StatusStepper } from "@/components/shared/status-stepper";
 import { formatHours, formatDate, pct } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -80,7 +80,7 @@ export default async function SprintDetailPage({ params }: { params: { id: strin
                       </td>
                       <td className="px-3 py-2.5 font-medium text-ink">{r.title}</td>
                       <td className="px-3 py-2.5"><PriorityBadge priority={r.priority} /></td>
-                      <td className="px-3 py-2.5"><StatusSelect requirementId={r.id} value={r.status_id} statuses={catalogs.statuses} sprintId={sprint.id} /></td>
+                      <td className="px-3 py-2.5"><StatusStepper requirementId={r.id} value={r.status_id} statuses={catalogs.statuses} sprintId={sprint.id} estimatedHours={Number(r.estimated_hours ?? 0)} /></td>
                       <td className="px-3 py-2.5 text-right tabular text-muted">{formatHours(r.estimated_hours)}</td>
                       <td className="px-3 py-2.5 text-right tabular font-medium">{formatHours(r.consumed_hours)}</td>
                     </tr>

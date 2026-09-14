@@ -12,6 +12,7 @@ import {
   Settings,
   FolderOpen,
   Receipt,
+  ListChecks,
   LogOut,
   Menu,
   X,
@@ -23,6 +24,7 @@ import { signOut } from "@/lib/actions";
 
 const NAV = [
   { href: "/", label: "Inicio", icon: LayoutDashboard },
+  { href: "/tareas", label: "Tareas", icon: ListChecks },
   { href: "/backlog", label: "Backlog", icon: ListTodo },
   { href: "/sprints", label: "Sprints", icon: Layers },
   { href: "/tracking", label: "Tracking", icon: Activity },

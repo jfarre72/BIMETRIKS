@@ -8,8 +8,8 @@ import { formatHours, pct } from "@/lib/utils";
 export function HoursDonut({ consumed, available }: { consumed: number; available: number }) {
   const total = consumed + available;
   const data = [
-    { name: "Consumidas", value: consumed, color: "#1E5EFF" },
-    { name: "Disponibles", value: available, color: "#16A34A" },
+    { name: "Horas utilizadas", value: consumed, color: "#1E5EFF" },
+    { name: "Horas disponibles", value: available, color: "#16A34A" },
   ];
   return (
     <Card className="h-full">
@@ -18,16 +18,16 @@ export function HoursDonut({ consumed, available }: { consumed: number; availabl
       </CardHeader>
       <CardBody>
         <div className="relative">
-          <ResponsiveContainer width="100%" height={185}>
-            <PieChart>
-              <Pie data={data} dataKey="value" nameKey="name" innerRadius={60} outerRadius={92} paddingAngle={2}>
+          <ResponsiveContainer width="100%" height={210}>
+            <PieChart margin={{ top: 4, bottom: 4 }}>
+              <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="45%" innerRadius={48} outerRadius={72} paddingAngle={2}>
                 {data.map((d, i) => <Cell key={i} fill={d.color} />)}
               </Pie>
               <Tooltip formatter={(v: any) => formatHours(Number(v))} />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Legend verticalAlign="bottom" height={24} wrapperStyle={{ fontSize: 12 }} />
             </PieChart>
           </ResponsiveContainer>
-          <div className="pointer-events-none absolute inset-x-0 top-[62px] text-center">
+          <div className="pointer-events-none absolute inset-x-0 top-[66px] text-center">
             <div className="text-2xl font-bold text-ink tabular">{pct(consumed, total)}%</div>
             <div className="text-xs text-muted">utilizado</div>
           </div>
