@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { getRequirement, getRequirementNotes, getAttachments } from "@/lib/queries";
+import { getRequirement, getRequirementNotes, getAttachments, getCatalogs } from "@/lib/queries";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardBody } from "@/components/ui";
-import { StatusBadge, PriorityBadge, TypeBadge } from "@/components/shared/req-badges";
+import { PriorityBadge, TypeBadge } from "@/components/shared/req-badges";
+import { StatusSelect } from "@/components/shared/status-select";
 import { AttachmentUploader } from "@/components/shared/attachment-uploader";
 import { formatHours, formatDate } from "@/lib/utils";
 import { Timeline } from "./timeline";
@@ -15,16 +16,17 @@ export const dynamic = "force-dynamic";
 export default async function RequirementDetailPage({ params }: { params: { id: string } }) {
   const requirement = await getRequirement(params.id);
   if (!requirement) notFound();
-  const [notes, attachments] = await Promise.all([
+  const [notes, attachments, catalogs] = await Promise.all([
     getRequirementNotes(params.id),
     getAttachments(params.id),
+    getCatalogs(),
   ]);
 
   const meta: [string, React.ReactNode][] = [
     ["Área", requirement.area?.name ?? "—"],
     ["Tipo", requirement.type ? <TypeBadge type={requirement.type} /> : "—"],
     ["Prioridad", <PriorityBadge key="p" priority={requirement.priority} />],
-    ["Estado", <StatusBadge key="s" status={requirement.status} />],
+    ["Estado", <StatusSelect key="s" requirementId={requirement.id} value={requirement.status_id} statuses={catalogs.statuses} sprintId={requirement.sprint?.id ?? null} />],
     ["Responsable", requirement.assignee?.full_name ?? requirement.assignee?.username ?? "—"],
     ["Validación", requirement.validator?.full_name ?? requirement.validator?.username ?? "—"],
     ["Sprint", requirement.sprint?.name ?? "—"],

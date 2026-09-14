@@ -10,6 +10,8 @@ import {
   Clock,
   BarChart3,
   Settings,
+  FolderOpen,
+  Receipt,
   LogOut,
   Menu,
   X,
@@ -25,7 +27,9 @@ const NAV = [
   { href: "/sprints", label: "Sprints", icon: Layers },
   { href: "/tracking", label: "Tracking", icon: Activity },
   { href: "/horas", label: "Horas", icon: Clock },
+  { href: "/facturacion", label: "Facturación", icon: Receipt },
   { href: "/reporteria", label: "Reportería", icon: BarChart3 },
+  { href: "/documentacion", label: "Documentación", icon: FolderOpen },
   { href: "/configuracion", label: "Configuración", icon: Settings },
 ];
 

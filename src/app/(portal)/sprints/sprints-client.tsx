@@ -3,10 +3,10 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Layers, ChevronDown, ChevronRight, Calendar, Pencil, Trash2 } from "lucide-react";
+import { Plus, Layers, ChevronDown, ChevronRight, Calendar, Pencil, Trash2, Archive, ArchiveRestore } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
-import { Button, Card, ProgressBar, EmptyState } from "@/components/ui";
-import { deleteSprint } from "@/lib/actions";
+import { Button, Card, ProgressBar, EmptyState, Badge } from "@/components/ui";
+import { deleteSprint, archiveSprint } from "@/lib/actions";
 import { SprintStatusBadge } from "@/components/shared/sprint-status";
 import { PriorityBadge } from "@/components/shared/req-badges";
 import { StatusSelect } from "@/components/shared/status-select";
@@ -18,10 +18,12 @@ export function SprintsClient({
   sprints,
   requirements,
   statuses,
+  archived = [],
 }: {
   sprints: Sprint[];
   requirements: Requirement[];
   statuses: Catalogs["statuses"];
+  archived?: Sprint[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -31,6 +33,10 @@ export function SprintsClient({
   async function onDeleteSprint(s: Sprint) {
     if (!confirm(`¿Eliminar "${s.name}"? Los requerimientos vuelven a "Sin asignar".`)) return;
     await deleteSprint(s.id);
+    router.refresh();
+  }
+  async function onArchive(s: Sprint, value: boolean) {
+    await archiveSprint(s.id, value);
     router.refresh();
   }
 
@@ -111,6 +117,9 @@ export function SprintsClient({
                     <button onClick={() => { setEditing(s); setOpen(true); }} className="rounded-lg p-1.5 text-muted hover:bg-canvas hover:text-ink" aria-label="Editar sprint">
                       <Pencil size={15} />
                     </button>
+                    <button onClick={() => onArchive(s, true)} className="rounded-lg p-1.5 text-muted hover:bg-canvas hover:text-ink" aria-label="Archivar sprint" title="Archivar">
+                      <Archive size={15} />
+                    </button>
                     <button onClick={() => onDeleteSprint(s)} className="rounded-lg p-1.5 text-muted hover:bg-red-50 hover:text-red-600" aria-label="Eliminar sprint">
                       <Trash2 size={15} />
                     </button>
@@ -163,6 +172,24 @@ export function SprintsClient({
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {archived.length > 0 && (
+        <div className="mt-6">
+          <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-muted">
+            <Archive size={15} /> Sprints archivados <Badge>{archived.length}</Badge>
+          </h2>
+          <div className="space-y-2">
+            {archived.map((s) => (
+              <Card key={s.id} className="flex items-center justify-between px-4 py-2.5">
+                <span className="text-sm text-ink">{s.name}</span>
+                <button onClick={() => onArchive(s, false)} className="inline-flex items-center gap-1 text-xs font-medium text-brand hover:underline">
+                  <ArchiveRestore size={14} /> Restaurar
+                </button>
+              </Card>
+            ))}
+          </div>
         </div>
       )}
 

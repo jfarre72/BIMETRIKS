@@ -18,7 +18,7 @@ export function HoursDonut({ consumed, available }: { consumed: number; availabl
       </CardHeader>
       <CardBody>
         <div className="relative">
-          <ResponsiveContainer width="100%" height={230}>
+          <ResponsiveContainer width="100%" height={185}>
             <PieChart>
               <Pie data={data} dataKey="value" nameKey="name" innerRadius={60} outerRadius={92} paddingAngle={2}>
                 {data.map((d, i) => <Cell key={i} fill={d.color} />)}
@@ -27,7 +27,7 @@ export function HoursDonut({ consumed, available }: { consumed: number; availabl
               <Legend wrapperStyle={{ fontSize: 12 }} />
             </PieChart>
           </ResponsiveContainer>
-          <div className="pointer-events-none absolute inset-x-0 top-[92px] text-center">
+          <div className="pointer-events-none absolute inset-x-0 top-[62px] text-center">
             <div className="text-2xl font-bold text-ink tabular">{pct(consumed, total)}%</div>
             <div className="text-xs text-muted">utilizado</div>
           </div>

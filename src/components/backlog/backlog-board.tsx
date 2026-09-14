@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -21,14 +22,14 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import Link from "next/link";
-import { GripVertical, Layers, Inbox, Trash2, Pencil, ExternalLink } from "lucide-react";
+import { GripVertical, Layers, Inbox, Trash2, Pencil, ExternalLink, ChevronDown, ChevronRight } from "lucide-react";
 import { Card } from "@/components/ui";
-import { StatusBadge, PriorityBadge } from "@/components/shared/req-badges";
+import { PriorityBadge } from "@/components/shared/req-badges";
+import { StatusSelect } from "@/components/shared/status-select";
 import { SprintStatusBadge } from "@/components/shared/sprint-status";
 import { formatHours } from "@/lib/utils";
 import { moveRequirement, deleteRequirement } from "@/lib/actions";
-import type { Requirement, Sprint } from "@/lib/types";
+import type { Catalogs, Requirement, Sprint } from "@/lib/types";
 
 const UNASSIGNED = "unassigned";
 type Groups = Record<string, Requirement[]>;
@@ -36,10 +37,12 @@ type Groups = Record<string, Requirement[]>;
 export function BacklogBoard({
   requirements,
   sprints,
+  statuses,
   onEdit,
 }: {
   requirements: Requirement[];
   sprints: Sprint[];
+  statuses: Catalogs["statuses"];
   onEdit: (req: Requirement) => void;
 }) {
   const router = useRouter();
@@ -48,6 +51,15 @@ export function BacklogBoard({
   const [groups, setGroups] = useState<Groups>(() => buildGroups(requirements, groupOrder));
   const [activeId, setActiveId] = useState<string | null>(null);
 
+  // Abrir por defecto: último sprint activo + "Sin asignar". Resto plegado.
+  const [expanded, setExpanded] = useState<Set<string>>(() => {
+    const lastActive = [...sprints].reverse().find((s) => s.status === "Activo");
+    const open = new Set<string>([UNASSIGNED]);
+    if (lastActive) open.add(lastActive.id);
+    else if (sprints.length) open.add(sprints[sprints.length - 1].id);
+    return open;
+  });
+
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   const allById = useMemo(() => {
@@ -55,6 +67,14 @@ export function BacklogBoard({
     Object.values(groups).flat().forEach((r) => (m[r.id] = r));
     return m;
   }, [groups]);
+
+  function toggle(gid: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      next.has(gid) ? next.delete(gid) : next.add(gid);
+      return next;
+    });
+  }
 
   function findContainer(id: string): string | undefined {
     if (groups[id]) return id;
@@ -72,7 +92,6 @@ export function BacklogBoard({
     const from = findContainer(activeId);
     const to = groups[overId] ? overId : findContainer(overId);
     if (!from || !to || from === to) return;
-
     setGroups((prev) => {
       const fromItems = [...prev[from]];
       const toItems = [...prev[to]];
@@ -91,10 +110,8 @@ export function BacklogBoard({
     const overId = e.over ? String(e.over.id) : null;
     setActiveId(null);
     if (!overId) return;
-
     const container = findContainer(activeId);
     if (!container) return;
-
     let next = groups;
     const items = groups[container];
     const oldIdx = items.findIndex((r) => r.id === activeId);
@@ -103,10 +120,8 @@ export function BacklogBoard({
       next = { ...groups, [container]: arrayMove(items, oldIdx, newIdx) };
       setGroups(next);
     }
-
     const orderedIds = next[container].map((r) => r.id);
-    const targetSprintId = container === UNASSIGNED ? null : container;
-    await moveRequirement(activeId, targetSprintId, orderedIds);
+    await moveRequirement(activeId, container === UNASSIGNED ? null : container, orderedIds);
     router.refresh();
   }
 
@@ -129,7 +144,7 @@ export function BacklogBoard({
       onDragOver={onDragOver}
       onDragEnd={onDragEnd}
     >
-      <div className="space-y-5">
+      <div className="space-y-3">
         {groupOrder.map((gid) => {
           const isUnassigned = gid === UNASSIGNED;
           const sprint = sprintById[gid];
@@ -138,10 +153,12 @@ export function BacklogBoard({
               key={gid}
               groupId={gid}
               title={isUnassigned ? "Sin asignar" : sprint?.name ?? "Sprint"}
-              subtitle={isUnassigned ? "Pendientes de asignación a un sprint" : undefined}
               status={isUnassigned ? undefined : sprint?.status}
               icon={isUnassigned ? <Inbox size={16} /> : <Layers size={16} />}
               rows={groups[gid] ?? []}
+              statuses={statuses}
+              expanded={expanded.has(gid)}
+              onToggle={() => toggle(gid)}
               onEdit={onEdit}
               onDelete={onDelete}
               onOpen={(id) => router.push(`/tracking/${id}`)}
@@ -165,10 +182,12 @@ export function BacklogBoard({
 function GroupTable({
   groupId,
   title,
-  subtitle,
   status,
   icon,
   rows,
+  statuses,
+  expanded,
+  onToggle,
   onEdit,
   onDelete,
   onOpen,
@@ -176,10 +195,12 @@ function GroupTable({
 }: {
   groupId: string;
   title: string;
-  subtitle?: string;
   status?: string;
   icon: React.ReactNode;
   rows: Requirement[];
+  statuses: Catalogs["statuses"];
+  expanded: boolean;
+  onToggle: () => void;
   onEdit: (r: Requirement) => void;
   onDelete: (r: Requirement) => void;
   onOpen: (id: string) => void;
@@ -191,67 +212,65 @@ function GroupTable({
 
   return (
     <Card className="overflow-hidden">
-      <div className="flex items-center justify-between border-b border-line bg-canvas/60 px-4 py-3">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between border-b border-line bg-canvas/60 px-3 py-2">
+        <button onClick={onToggle} className="flex items-center gap-2 text-left">
+          <span className="text-muted">{expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</span>
           <span className="text-muted">{icon}</span>
-          {sprintHref ? (
-            <Link href={sprintHref} className="group inline-flex items-center gap-1 text-sm font-semibold text-ink hover:text-brand">
-              {title}
-              <ExternalLink size={13} className="text-muted group-hover:text-brand" />
-            </Link>
-          ) : (
-            <h3 className="text-sm font-semibold text-ink">{title}</h3>
-          )}
+          <span className="text-sm font-semibold text-ink">{title}</span>
           <span className="rounded-full bg-line/70 px-2 py-0.5 text-xs tabular text-muted">{rows.length}</span>
           {status && <SprintStatusBadge status={status} />}
-        </div>
-        {sprintHref ? (
-          <Link href={sprintHref} className="hidden text-xs font-medium text-brand hover:underline sm:block">Ir al sprint</Link>
-        ) : (
-          subtitle && <span className="hidden text-xs text-muted sm:block">{subtitle}</span>
+        </button>
+        {sprintHref && (
+          <Link href={sprintHref} className="inline-flex items-center gap-1 text-xs font-medium text-brand hover:underline">
+            Ir al sprint <ExternalLink size={12} />
+          </Link>
         )}
       </div>
 
       <SortableContext items={rows.map((r) => r.id)} strategy={verticalListSortingStrategy}>
         <div ref={setNodeRef} className={isOver ? "bg-brand/5" : undefined}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
-                  <th className="w-12 py-2 pl-3">#</th>
-                  <th className="px-2 py-2">ID</th>
-                  <th className="px-2 py-2">Título</th>
-                  <th className="px-2 py-2">Área</th>
-                  <th className="px-2 py-2">Prioridad</th>
-                  <th className="px-2 py-2">Estado</th>
-                  <th className="px-2 py-2 text-right">Est.</th>
-                  <th className="px-2 py-2 text-right">Cons.</th>
-                  <th className="w-10 px-2 py-2"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="px-4 py-8 text-center text-sm text-muted">
-                      Arrastrá requerimientos hasta acá.
-                    </td>
+          {expanded ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
+                    <th className="w-12 py-2 pl-3">#</th>
+                    <th className="w-24 px-2 py-2">ID</th>
+                    <th className="px-2 py-2">Título</th>
+                    <th className="w-40 px-2 py-2">Área</th>
+                    <th className="w-24 px-2 py-2">Prioridad</th>
+                    <th className="w-40 px-2 py-2">Estado</th>
+                    <th className="w-16 px-2 py-2 text-right">Est.</th>
+                    <th className="w-16 px-2 py-2 text-right">Cons.</th>
+                    <th className="w-16 px-2 py-2"></th>
                   </tr>
-                ) : (
-                  rows.map((r, i) => <Row key={r.id} req={r} index={i + 1} onEdit={onEdit} onDelete={onDelete} onOpen={onOpen} />)
+                </thead>
+                <tbody>
+                  {rows.length === 0 ? (
+                    <tr><td colSpan={9} className="px-4 py-6 text-center text-sm text-muted">Arrastrá requerimientos hasta acá.</td></tr>
+                  ) : (
+                    rows.map((r, i) => (
+                      <Row key={r.id} req={r} index={i + 1} statuses={statuses} onEdit={onEdit} onDelete={onDelete} onOpen={onOpen} />
+                    ))
+                  )}
+                </tbody>
+                {rows.length > 0 && (
+                  <tfoot>
+                    <tr className="border-t border-line font-medium">
+                      <td colSpan={6} className="px-2 py-2 text-right text-xs text-muted">Total</td>
+                      <td className="px-2 py-2 text-right tabular">{formatHours(totalEst)}</td>
+                      <td className="px-2 py-2 text-right tabular">{formatHours(totalCons)}</td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
                 )}
-              </tbody>
-              {rows.length > 0 && (
-                <tfoot>
-                  <tr className="border-t border-line font-medium">
-                    <td colSpan={6} className="px-2 py-2 text-right text-xs text-muted">Total</td>
-                    <td className="px-2 py-2 text-right tabular">{formatHours(totalEst)}</td>
-                    <td className="px-2 py-2 text-right tabular">{formatHours(totalCons)}</td>
-                    <td></td>
-                  </tr>
-                </tfoot>
-              )}
-            </table>
-          </div>
+              </table>
+            </div>
+          ) : (
+            <div className="px-4 py-2 text-xs text-muted">
+              {rows.length} req · {formatHours(totalEst)} est · {formatHours(totalCons)} cons — {isOver ? "soltá para asignar" : "plegado"}
+            </div>
+          )}
         </div>
       </SortableContext>
     </Card>
@@ -261,12 +280,14 @@ function GroupTable({
 function Row({
   req,
   index,
+  statuses,
   onEdit,
   onDelete,
   onOpen,
 }: {
   req: Requirement;
   index: number;
+  statuses: Catalogs["statuses"];
   onEdit: (r: Requirement) => void;
   onDelete: (r: Requirement) => void;
   onOpen: (id: string) => void;
@@ -296,16 +317,14 @@ function Row({
       <td className="px-2 py-2 font-medium text-ink">{req.title}</td>
       <td className="whitespace-nowrap px-2 py-2 text-muted">{req.area?.name ?? "—"}</td>
       <td className="px-2 py-2"><PriorityBadge priority={req.priority} /></td>
-      <td className="px-2 py-2"><StatusBadge status={req.status} /></td>
+      <td className="px-2 py-2">
+        <StatusSelect requirementId={req.id} value={req.status_id} statuses={statuses} sprintId={req.sprint?.id ?? null} />
+      </td>
       <td className="px-2 py-2 text-right tabular text-muted">{formatHours(req.estimated_hours)}</td>
       <td className="px-2 py-2 text-right tabular font-medium">{formatHours(req.consumed_hours)}</td>
-      <td className="whitespace-nowrap px-2 py-2 text-right" onClick={(e) => e.stopPropagation()}>
-        <button onClick={() => onEdit(req)} className="rounded-lg p-1 text-muted hover:bg-canvas hover:text-ink" aria-label="Editar">
-          <Pencil size={15} />
-        </button>
-        <button onClick={() => onDelete(req)} className="rounded-lg p-1 text-muted hover:bg-red-50 hover:text-red-600" aria-label="Eliminar">
-          <Trash2 size={15} />
-        </button>
+      <td className="whitespace-nowrap px-2 py-2 text-right" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+        <button onClick={() => onEdit(req)} className="rounded-lg p-1 text-muted hover:bg-canvas hover:text-ink" aria-label="Editar"><Pencil size={15} /></button>
+        <button onClick={() => onDelete(req)} className="rounded-lg p-1 text-muted hover:bg-red-50 hover:text-red-600" aria-label="Eliminar"><Trash2 size={15} /></button>
       </td>
     </tr>
   );

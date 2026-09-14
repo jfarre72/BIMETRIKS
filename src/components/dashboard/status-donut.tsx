@@ -20,7 +20,7 @@ export function StatusDonut({
         {data.length === 0 ? (
           <EmptyState title="Sin requerimientos" description="Creá el primero en el Backlog." />
         ) : (
-          <ResponsiveContainer width="100%" height={230}>
+          <ResponsiveContainer width="100%" height={185}>
             <PieChart>
               <Pie data={data} dataKey="value" nameKey="name" innerRadius={55} outerRadius={90} paddingAngle={2}>
                 {data.map((s, i) => (
