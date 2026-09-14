@@ -42,3 +42,28 @@ body {
   background-image: radial-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1px);
   background-size: 22px 22px;
 }
+
+/* Impresión / PDF: mostrar solo el área de reporte */
+.print-area {
+  display: none;
+}
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 24px;
+  }
+  @page {
+    margin: 16mm;
+  }
+}

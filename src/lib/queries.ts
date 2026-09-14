@@ -133,7 +133,8 @@ export async function getSprint(id: string): Promise<{ sprint: Sprint | null; re
   const requirements: Requirement[] = (links ?? [])
     .map((l: any) => l.requirement)
     .filter(Boolean)
-    .map(shapeRequirement);
+    .map(shapeRequirement)
+    .sort((a: Requirement, b: Requirement) => Number(a.sort_index ?? 0) - Number(b.sort_index ?? 0));
   return {
     sprint: {
       ...(sprint as any),
@@ -233,33 +234,14 @@ export async function getTimeEntries(limit = 100): Promise<TimeEntry[]> {
 export interface DashboardData {
   hours: { contracted: number; consumed: number; available: number };
   requirements: Requirement[];
-  activeSprint: Sprint | null;
-  recentNotes: RequirementNote[];
-  recentEntries: TimeEntry[];
   blocks: HourBlock[];
 }
 
 export async function getDashboard(): Promise<DashboardData> {
-  const supabase = createClient();
-  const [hours, requirements, sprints, recentEntries, blocks, notes] = await Promise.all([
+  const [hours, requirements, blocks] = await Promise.all([
     getProjectHours(),
     getRequirements(),
-    getSprints(),
-    getTimeEntries(6),
     getHourBlocks(),
-    supabase
-      .from("requirement_notes")
-      .select("id,event_type,event_date,body,created_at,author:profiles(id,username,full_name,role)")
-      .order("created_at", { ascending: false })
-      .limit(6),
   ]);
-  const activeSprint = sprints.find((s) => s.status === "Activo") ?? sprints[0] ?? null;
-  return {
-    hours,
-    requirements,
-    activeSprint,
-    recentNotes: (notes.data as any) ?? [],
-    recentEntries,
-    blocks,
-  };
+  return { hours, requirements, blocks };
 }

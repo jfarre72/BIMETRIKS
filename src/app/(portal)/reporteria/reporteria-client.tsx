@@ -19,6 +19,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardBody, CardHeader, CardTitle, EmptyState } from "@/components/ui";
 import { StatCard } from "@/components/ui/stat-card";
 import { HourBlocksChart } from "@/components/dashboard/hour-blocks-chart";
+import { ReportPdf, type ReportReq } from "./report-pdf";
 import { formatHours, formatDateShort } from "@/lib/utils";
 import type { HourBlock } from "@/lib/queries";
 
@@ -32,6 +33,8 @@ export function ReporteriaClient({
   bySprint,
   blocks,
   totals,
+  clientName,
+  reportReqs,
 }: {
   hours: { contracted: number; consumed: number; available: number };
   byStatus: { name: string; color: string; value: number }[];
@@ -40,6 +43,8 @@ export function ReporteriaClient({
   bySprint: { name: string; estimadas: number; consumidas: number }[];
   blocks: HourBlock[];
   totals: { total: number; finalized: number; pending: number };
+  clientName: string;
+  reportReqs: ReportReq[];
 }) {
   const contractedVsConsumed = [
     { name: "Contratadas", horas: hours.contracted },
@@ -50,6 +55,8 @@ export function ReporteriaClient({
   return (
     <div>
       <PageHeader title="Reportería" subtitle="Reportes ejecutivos del servicio" />
+
+      <ReportPdf clientName={clientName} requirements={reportReqs} hours={hours} />
 
       <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Requerimientos" value={totals.total} accent="#0B1E3F" />

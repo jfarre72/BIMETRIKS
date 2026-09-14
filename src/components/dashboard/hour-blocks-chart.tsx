@@ -32,11 +32,10 @@ export function HourBlocksChart({ blocks }: { blocks: HourBlock[] }) {
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#EEF2F7" />
               <XAxis dataKey="label" tick={AXIS} axisLine={false} tickLine={false} />
               <YAxis tick={AXIS} axisLine={false} tickLine={false} />
-              <Tooltip cursor={{ fill: "#F7F9FC" }} />
+              <Tooltip cursor={{ fill: "#F7F9FC" }} formatter={(v: any) => `${v} h`} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="contracted" name="Contratadas" fill="#0B1E3F" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="consumed" name="Consumidas" fill="#1E5EFF" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="available" name="Disponibles" fill="#16A34A" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="consumed" name="Consumidas" stackId="h" fill="#1E5EFF" />
+              <Bar dataKey="available" name="Disponibles" stackId="h" fill="#6FBF3B" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
