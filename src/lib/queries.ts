@@ -87,10 +87,12 @@ export async function getRequirements(): Promise<Requirement[]> {
 
 export async function getRequirement(id: string): Promise<Requirement | null> {
   const supabase = createClient();
-  const { data } = await supabase.from("requirements").select(REQ_SELECT).eq("id", id).single();
+  const [{ data }, consumed, sprintMap] = await Promise.all([
+    supabase.from("requirements").select(REQ_SELECT).eq("id", id).single(),
+    consumedByRequirement(),
+    sprintByRequirement(),
+  ]);
   if (!data) return null;
-  const consumed = await consumedByRequirement();
-  const sprintMap = await sprintByRequirement();
   return { ...(data as any), consumed_hours: consumed[id] ?? 0, sprint: sprintMap[id] ?? null };
 }
 
@@ -126,13 +128,12 @@ export async function getSprints(): Promise<Sprint[]> {
 
 export async function getSprint(id: string): Promise<{ sprint: Sprint | null; requirements: Requirement[] }> {
   const supabase = createClient();
-  const { data: sprint } = await supabase.from("sprints").select("*").eq("id", id).single();
+  const [{ data: sprint }, { data: links }, consumed] = await Promise.all([
+    supabase.from("sprints").select("*").eq("id", id).single(),
+    supabase.from("sprint_requirements").select(`requirement:requirements(${REQ_SELECT})`).eq("sprint_id", id),
+    consumedByRequirement(),
+  ]);
   if (!sprint) return { sprint: null, requirements: [] };
-  const { data: links } = await supabase
-    .from("sprint_requirements")
-    .select(`requirement:requirements(${REQ_SELECT})`)
-    .eq("sprint_id", id);
-  const consumed = await consumedByRequirement();
   const requirements: Requirement[] = (links ?? [])
     .map((l: any) => l.requirement)
     .filter(Boolean)

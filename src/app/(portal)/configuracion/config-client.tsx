@@ -1,0 +1,208 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Plus, Pencil, Trash2, ArrowUp, ArrowDown, Loader2, Check, X } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button, Card, CardBody, Input, Label, Badge } from "@/components/ui";
+import { Modal } from "@/components/ui/sheet";
+import {
+  upsertCatalogItem,
+  deleteCatalogItem,
+  moveCatalogItem,
+  type CatalogKind,
+} from "@/lib/catalog-actions";
+
+export type CatalogRow = {
+  id: string;
+  name: string;
+  color?: string;
+  is_final?: boolean;
+  order: number;
+};
+
+type Data = Record<CatalogKind, CatalogRow[]>;
+
+const TABS: { key: CatalogKind; label: string; hasColor: boolean; ordered: boolean }[] = [
+  { key: "req_statuses", label: "Estados", hasColor: true, ordered: true },
+  { key: "req_priorities", label: "Prioridades", hasColor: true, ordered: true },
+  { key: "req_types", label: "Tipos", hasColor: true, ordered: false },
+  { key: "areas", label: "Áreas / Capítulos", hasColor: false, ordered: true },
+];
+
+export function ConfigClient({ data }: { data: Data }) {
+  const router = useRouter();
+  const [tab, setTab] = useState<CatalogKind>("req_statuses");
+  const [editing, setEditing] = useState<CatalogRow | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  const active = TABS.find((t) => t.key === tab)!;
+  const rows = data[tab];
+
+  function openNew() {
+    setEditing(null);
+    setFormOpen(true);
+  }
+  function openEdit(row: CatalogRow) {
+    setEditing(row);
+    setFormOpen(true);
+  }
+
+  function onDelete(row: CatalogRow) {
+    if (!confirm(`¿Eliminar "${row.name}"? Los requerimientos que lo usen quedarán sin ese valor.`)) return;
+    startTransition(async () => {
+      await deleteCatalogItem(tab, row.id);
+      router.refresh();
+    });
+  }
+
+  function move(index: number, dir: -1 | 1) {
+    const other = rows[index + dir];
+    const current = rows[index];
+    if (!other) return;
+    startTransition(async () => {
+      await moveCatalogItem(tab, { id: current.id, order: current.order }, { id: other.id, order: other.order });
+      router.refresh();
+    });
+  }
+
+  return (
+    <div>
+      <PageHeader
+        title="Configuración"
+        subtitle="Administrá los catálogos: estados, prioridades, tipos y áreas"
+        actions={<Button onClick={openNew}><Plus size={16} /> Nuevo</Button>}
+      />
+
+      {/* Tabs */}
+      <div className="mb-4 flex flex-wrap gap-1 rounded-xl border border-line bg-surface p-1">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              tab === t.key ? "bg-brand text-white" : "text-muted hover:bg-canvas hover:text-ink"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <Card>
+        <CardBody>
+          {rows.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted">No hay elementos. Agregá el primero.</p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {rows.map((row, i) => (
+                <li key={row.id} className="flex items-center gap-3 py-2.5">
+                  {active.ordered && (
+                    <div className="flex flex-col">
+                      <button onClick={() => move(i, -1)} disabled={i === 0 || isPending} className="text-muted hover:text-ink disabled:opacity-30">
+                        <ArrowUp size={14} />
+                      </button>
+                      <button onClick={() => move(i, 1)} disabled={i === rows.length - 1 || isPending} className="text-muted hover:text-ink disabled:opacity-30">
+                        <ArrowDown size={14} />
+                      </button>
+                    </div>
+                  )}
+                  <span className="w-6 text-center text-xs tabular text-muted">{i + 1}</span>
+                  {active.hasColor && row.color && (
+                    <span className="h-4 w-4 shrink-0 rounded-full border border-line" style={{ backgroundColor: row.color }} />
+                  )}
+                  <span className="flex-1 text-sm font-medium text-ink">{row.name}</span>
+                  {tab === "req_statuses" && row.is_final && <Badge color="#16A34A">final</Badge>}
+                  <button onClick={() => openEdit(row)} className="rounded-lg p-1.5 text-muted hover:bg-canvas hover:text-ink"><Pencil size={15} /></button>
+                  <button onClick={() => onDelete(row)} className="rounded-lg p-1.5 text-muted hover:bg-red-50 hover:text-red-600"><Trash2 size={15} /></button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardBody>
+      </Card>
+
+      <CatalogForm
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        kind={tab}
+        label={active.label}
+        hasColor={active.hasColor}
+        showFinal={tab === "req_statuses"}
+        editing={editing}
+        onSaved={() => { setFormOpen(false); router.refresh(); }}
+      />
+    </div>
+  );
+}
+
+function CatalogForm({
+  open,
+  onClose,
+  kind,
+  label,
+  hasColor,
+  showFinal,
+  editing,
+  onSaved,
+}: {
+  open: boolean;
+  onClose: () => void;
+  kind: CatalogKind;
+  label: string;
+  hasColor: boolean;
+  showFinal: boolean;
+  editing: CatalogRow | null;
+  onSaved: () => void;
+}) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setPending(true);
+    setError(null);
+    const fd = new FormData(e.currentTarget);
+    const res = await upsertCatalogItem(kind, {
+      id: editing?.id,
+      name: String(fd.get("name") ?? ""),
+      color: hasColor ? String(fd.get("color") ?? "#64748B") : undefined,
+      is_final: showFinal ? fd.get("is_final") === "on" : undefined,
+    });
+    setPending(false);
+    if (!res.ok) return setError(res.error ?? "Error");
+    onSaved();
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title={editing ? `Editar ${label}` : `Nuevo · ${label}`}>
+      <form onSubmit={onSubmit} className="space-y-3">
+        <div>
+          <Label>Nombre</Label>
+          <Input name="name" required defaultValue={editing?.name ?? ""} autoFocus />
+        </div>
+        {hasColor && (
+          <div>
+            <Label>Color</Label>
+            <div className="flex items-center gap-2">
+              <input type="color" name="color" defaultValue={editing?.color ?? "#1E5EFF"} className="h-10 w-14 cursor-pointer rounded-lg border border-line" />
+              <span className="text-xs text-muted">Se usa en los badges</span>
+            </div>
+          </div>
+        )}
+        {showFinal && (
+          <label className="flex items-center gap-2 text-sm text-ink">
+            <input type="checkbox" name="is_final" defaultChecked={editing?.is_final ?? false} className="h-4 w-4 rounded border-line text-brand" />
+            Es estado final (cuenta como “Finalizado”)
+          </label>
+        )}
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <div className="flex justify-end gap-2 pt-1">
+          <Button type="button" variant="secondary" onClick={onClose}><X size={15} /> Cancelar</Button>
+          <Button type="submit" disabled={pending}>{pending ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />} Guardar</Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
