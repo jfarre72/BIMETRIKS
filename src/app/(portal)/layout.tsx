@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getClientName } from "@/lib/queries";
 import { Sidebar } from "@/components/layout/sidebar";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
@@ -9,11 +10,10 @@ export default async function PortalLayout({ children }: { children: React.React
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("username, full_name")
-    .eq("id", user.id)
-    .single();
+  const [{ data: profile }, clientName] = await Promise.all([
+    supabase.from("profiles").select("username, full_name").eq("id", user.id).single(),
+    getClientName(),
+  ]);
 
   const display = {
     name: profile?.full_name || profile?.username || "Usuario",
@@ -22,7 +22,7 @@ export default async function PortalLayout({ children }: { children: React.React
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas lg:flex-row">
-      <Sidebar user={display} />
+      <Sidebar user={display} clientName={clientName} />
       <main className="flex-1 overflow-x-hidden">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</div>
       </main>

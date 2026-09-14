@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getProjectId } from "@/lib/project";
+import { clearReadCache } from "@/lib/cache";
 
 export type CatalogKind = "areas" | "req_statuses" | "req_priorities" | "req_types";
 
@@ -14,6 +15,7 @@ const TABLES: Record<CatalogKind, string> = {
 };
 
 function revalidateAll() {
+  clearReadCache();
   revalidatePath("/configuracion");
   revalidatePath("/backlog");
   revalidatePath("/");

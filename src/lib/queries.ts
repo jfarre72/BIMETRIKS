@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getProjectId } from "@/lib/project";
+import { cached } from "@/lib/cache";
 import type {
   Catalogs,
   ContractedHours,
@@ -34,6 +35,10 @@ function shapeRequirement(r: any): Requirement {
 }
 
 export async function getCatalogs(): Promise<Catalogs> {
+  return cached("catalogs", 30_000, _getCatalogs);
+}
+
+async function _getCatalogs(): Promise<Catalogs> {
   const supabase = createClient();
   const PROJECT_ID = await getProjectId();
   const [areas, statuses, priorities, types, people, sprints] = await Promise.all([
@@ -153,6 +158,53 @@ export async function getProjectHours() {
   return { contracted, consumed, available: contracted - consumed };
 }
 
+export async function getClientName(): Promise<string> {
+  return cached("clientName", 60_000, async () => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("projects")
+      .select("client:clients(name)")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .single();
+    return ((data as any)?.client?.name as string) ?? "Cliente";
+  });
+}
+
+/**
+ * Bloques de horas contratadas (por fecha de registro). El consumo se asigna
+ * FIFO: primero se agota el bloque más antiguo. Es lo más simple de mantener y
+ * no requiere etiquetar cada carga de horas a un bloque puntual.
+ */
+export interface HourBlock {
+  label: string;
+  contracted: number;
+  consumed: number;
+  available: number;
+}
+
+const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+export async function getHourBlocks(): Promise<HourBlock[]> {
+  return cached("hourBlocks", 15_000, async () => {
+    const supabase = createClient();
+    const PROJECT_ID = await getProjectId();
+    const [{ data: blocks }, { data: total }] = await Promise.all([
+      supabase.from("contracted_hours").select("entry_date,hours,note").eq("project_id", PROJECT_ID).order("entry_date", { ascending: true }),
+      supabase.from("v_project_hours").select("consumed_hours").eq("project_id", PROJECT_ID).single(),
+    ]);
+    let remaining = Number(total?.consumed_hours ?? 0);
+    return (blocks ?? []).map((b: any) => {
+      const d = new Date(b.entry_date);
+      const label = b.note?.trim() || `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+      const contracted = Number(b.hours);
+      const consumed = Math.min(contracted, remaining);
+      remaining -= consumed;
+      return { label, contracted, consumed, available: contracted - consumed };
+    });
+  });
+}
+
 export async function getContractedHours(): Promise<ContractedHours[]> {
   const supabase = createClient();
   const PROJECT_ID = await getProjectId();
@@ -184,15 +236,17 @@ export interface DashboardData {
   activeSprint: Sprint | null;
   recentNotes: RequirementNote[];
   recentEntries: TimeEntry[];
+  blocks: HourBlock[];
 }
 
 export async function getDashboard(): Promise<DashboardData> {
   const supabase = createClient();
-  const [hours, requirements, sprints, recentEntries, notes] = await Promise.all([
+  const [hours, requirements, sprints, recentEntries, blocks, notes] = await Promise.all([
     getProjectHours(),
     getRequirements(),
     getSprints(),
     getTimeEntries(6),
+    getHourBlocks(),
     supabase
       .from("requirement_notes")
       .select("id,event_type,event_date,body,created_at,author:profiles(id,username,full_name,role)")
@@ -206,5 +260,6 @@ export async function getDashboard(): Promise<DashboardData> {
     activeSprint,
     recentNotes: (notes.data as any) ?? [],
     recentEntries,
+    blocks,
   };
 }

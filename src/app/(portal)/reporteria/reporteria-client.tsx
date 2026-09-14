@@ -18,7 +18,9 @@ import {
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardBody, CardHeader, CardTitle, EmptyState } from "@/components/ui";
 import { StatCard } from "@/components/ui/stat-card";
+import { HourBlocksChart } from "@/components/dashboard/hour-blocks-chart";
 import { formatHours, formatDateShort } from "@/lib/utils";
+import type { HourBlock } from "@/lib/queries";
 
 const AXIS = { fontSize: 12, fill: "#64748B" };
 
@@ -28,6 +30,7 @@ export function ReporteriaClient({
   byArea,
   evolution,
   bySprint,
+  blocks,
   totals,
 }: {
   hours: { contracted: number; consumed: number; available: number };
@@ -35,6 +38,7 @@ export function ReporteriaClient({
   byArea: { name: string; value: number }[];
   evolution: { date: string; acumulado: number }[];
   bySprint: { name: string; estimadas: number; consumidas: number }[];
+  blocks: HourBlock[];
   totals: { total: number; finalized: number; pending: number };
 }) {
   const contractedVsConsumed = [
@@ -52,6 +56,10 @@ export function ReporteriaClient({
         <StatCard label="Finalizados" value={totals.finalized} accent="#16A34A" />
         <StatCard label="Pendientes" value={totals.pending} accent="#CA8A04" />
         <StatCard label="Horas consumidas" value={formatHours(hours.consumed)} accent="#1E5EFF" />
+      </div>
+
+      <div className="mb-4">
+        <HourBlocksChart blocks={blocks} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
