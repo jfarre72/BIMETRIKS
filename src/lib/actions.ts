@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { PROJECT_ID } from "@/lib/constants";
+import { getProjectId } from "@/lib/project";
 
 async function currentProfileId(): Promise<string | null> {
   const supabase = createClient();
@@ -57,7 +57,7 @@ export async function saveRequirement(_prev: ActionResult | null, formData: Form
 
   const { data, error } = await supabase
     .from("requirements")
-    .insert({ ...values, project_id: PROJECT_ID, created_by: uid, updated_by: uid })
+    .insert({ ...values, project_id: await getProjectId(), created_by: uid, updated_by: uid })
     .select("id")
     .single();
   if (error) return { ok: false, error: error.message };
@@ -125,7 +125,7 @@ export async function saveSprint(_prev: ActionResult | null, formData: FormData)
   } else {
     const { error } = await supabase
       .from("sprints")
-      .insert({ ...values, project_id: PROJECT_ID, created_by: uid, updated_by: uid });
+      .insert({ ...values, project_id: await getProjectId(), created_by: uid, updated_by: uid });
     if (error) return { ok: false, error: error.message };
   }
   revalidatePath("/sprints");
@@ -173,7 +173,7 @@ export async function addTimeEntry(_prev: ActionResult | null, formData: FormDat
   const uid = await currentProfileId();
   const { error } = await supabase
     .from("time_entries")
-    .insert({ ...parsed.data, project_id: PROJECT_ID, created_by: uid });
+    .insert({ ...parsed.data, project_id: await getProjectId(), created_by: uid });
   if (error) return { ok: false, error: error.message };
   revalidatePath("/horas");
   revalidatePath("/");
@@ -193,7 +193,7 @@ export async function addContractedHours(_prev: ActionResult | null, formData: F
   const uid = await currentProfileId();
   const { error } = await supabase
     .from("contracted_hours")
-    .insert({ ...parsed.data, project_id: PROJECT_ID, created_by: uid });
+    .insert({ ...parsed.data, project_id: await getProjectId(), created_by: uid });
   if (error) return { ok: false, error: error.message };
   revalidatePath("/horas");
   revalidatePath("/");

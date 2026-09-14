@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { PROJECT_ID } from "@/lib/constants";
+import { getProjectId } from "@/lib/project";
 import type {
   Catalogs,
   ContractedHours,
@@ -24,6 +24,7 @@ const REQ_SELECT = `
 /** Mapa requirement_id -> horas consumidas (desde la vista). */
 async function consumedByRequirement(): Promise<Record<string, number>> {
   const supabase = createClient();
+  const PROJECT_ID = await getProjectId();
   const { data } = await supabase
     .from("v_requirement_hours")
     .select("requirement_id, consumed_hours")
@@ -48,6 +49,7 @@ async function sprintByRequirement(): Promise<Record<string, { id: string; name:
 
 export async function getCatalogs(): Promise<Catalogs> {
   const supabase = createClient();
+  const PROJECT_ID = await getProjectId();
   const [areas, statuses, priorities, types, people, sprints] = await Promise.all([
     supabase.from("areas").select("id,name,sort_order").eq("project_id", PROJECT_ID).order("sort_order"),
     supabase.from("req_statuses").select("id,name,color,is_final,sort_order").eq("project_id", PROJECT_ID).order("sort_order"),
@@ -68,6 +70,7 @@ export async function getCatalogs(): Promise<Catalogs> {
 
 export async function getRequirements(): Promise<Requirement[]> {
   const supabase = createClient();
+  const PROJECT_ID = await getProjectId();
   const [{ data }, consumed, sprintMap] = await Promise.all([
     supabase
       .from("requirements")
@@ -109,6 +112,7 @@ export async function getRequirementNotes(reqId: string): Promise<RequirementNot
 
 export async function getSprints(): Promise<Sprint[]> {
   const supabase = createClient();
+  const PROJECT_ID = await getProjectId();
   const [{ data: sprints }, { data: hours }, { data: links }] = await Promise.all([
     supabase.from("sprints").select("*").eq("project_id", PROJECT_ID).order("created_at", { ascending: false }),
     supabase.from("v_sprint_hours").select("sprint_id,estimated_hours,consumed_hours").eq("project_id", PROJECT_ID),
@@ -156,6 +160,7 @@ export async function getSprint(id: string): Promise<{ sprint: Sprint | null; re
 
 export async function getProjectHours() {
   const supabase = createClient();
+  const PROJECT_ID = await getProjectId();
   const { data } = await supabase
     .from("v_project_hours")
     .select("contracted_hours,consumed_hours")
@@ -168,6 +173,7 @@ export async function getProjectHours() {
 
 export async function getContractedHours(): Promise<ContractedHours[]> {
   const supabase = createClient();
+  const PROJECT_ID = await getProjectId();
   const { data } = await supabase
     .from("contracted_hours")
     .select("id,entry_date,hours,note")
@@ -178,6 +184,7 @@ export async function getContractedHours(): Promise<ContractedHours[]> {
 
 export async function getTimeEntries(limit = 100): Promise<TimeEntry[]> {
   const supabase = createClient();
+  const PROJECT_ID = await getProjectId();
   const { data } = await supabase
     .from("time_entries")
     .select(

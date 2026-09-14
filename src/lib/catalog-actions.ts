@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { PROJECT_ID } from "@/lib/constants";
+import { getProjectId } from "@/lib/project";
 
 export type CatalogKind = "areas" | "req_statuses" | "req_priorities" | "req_types";
 
@@ -29,6 +29,7 @@ export async function upsertCatalogItem(
   if (!name) return { ok: false, error: "El nombre es obligatorio" };
   const supabase = createClient();
   const table = TABLES[kind];
+  const PROJECT_ID = await getProjectId();
 
   const values: Record<string, unknown> = { name };
   if (kind !== "areas") values.color = payload.color ?? "#64748B";
