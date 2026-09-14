@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-/** Logo BiMetriks: rayo + wordmark + bajada "Portal de Proyectos". */
+/** Logo BiMetriks: marca de dos flechas (verde) + wordmark + bajada. */
 export function Logo({
   variant = "dark",
   showTagline = true,
@@ -10,20 +10,15 @@ export function Logo({
   showTagline?: boolean;
   className?: string;
 }) {
-  const text = variant === "light" ? "text-white" : "text-navy";
-  const bi = variant === "light" ? "text-white" : "text-navy";
-  const metriks = variant === "light" ? "text-sky" : "text-brand";
+  const wordmark = variant === "light" ? "text-white" : "text-navy";
   return (
     <div className={cn("flex flex-col", className)}>
-      <div className="flex items-center gap-2">
-        <BoltMark />
-        <span className={cn("text-xl font-bold tracking-tight", text)}>
-          <span className={bi}>Bi</span>
-          <span className={metriks}>Metriks</span>
-        </span>
+      <div className="flex items-center gap-2.5">
+        <ArrowsMark />
+        <span className={cn("text-xl font-bold tracking-tight", wordmark)}>BiMetriks</span>
       </div>
       {showTagline && (
-        <div className="mt-1 flex items-center gap-2 pl-9">
+        <div className="mt-1 flex items-center gap-2 pl-[42px]">
           <span className="h-px w-4 bg-lime" />
           <span
             className={cn(
@@ -39,12 +34,26 @@ export function Logo({
   );
 }
 
-function BoltMark() {
+/** Dos flechas en verde (subiendo y bajando), estilo isotipo BiMetriks. */
+function ArrowsMark() {
   return (
-    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-brand to-sky text-white">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-        <path d="M13 2L4.5 13.5H11L10 22l8.5-11.5H12L13 2z" />
-      </svg>
-    </span>
+    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      {/* Flecha superior (sube a la derecha) */}
+      <path
+        d="M6 14 L20 14 M20 14 L20 20 M20 14 L26 8 M26 8 L20 8 M26 8 L26 14"
+        stroke="#6FBF3B"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Flecha inferior (baja a la izquierda) */}
+      <path
+        d="M26 18 L12 18 M12 18 L12 12 M12 18 L6 24 M6 24 L12 24 M6 24 L6 18"
+        stroke="#4E9A2E"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }

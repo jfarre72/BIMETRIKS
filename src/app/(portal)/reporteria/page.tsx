@@ -1,16 +1,30 @@
-import { getProjectHours, getRequirements, getSprints, getTimeEntries, getHourBlocks } from "@/lib/queries";
+import { getProjectHours, getRequirements, getSprints, getTimeEntries, getHourBlocks, getClientName } from "@/lib/queries";
 import { ReporteriaClient } from "./reporteria-client";
+import type { ReportReq } from "./report-pdf";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReporteriaPage() {
-  const [hours, requirements, sprints, entries, blocks] = await Promise.all([
+  const [hours, requirements, sprints, entries, blocks, clientName] = await Promise.all([
     getProjectHours(),
     getRequirements(),
     getSprints(),
     getTimeEntries(500),
     getHourBlocks(),
+    getClientName(),
   ]);
+
+  const reportReqs: ReportReq[] = requirements.map((r) => ({
+    code: r.code,
+    title: r.title,
+    area: r.area?.name ?? "—",
+    status: r.status?.name ?? "Sin estado",
+    statusColor: r.status?.color ?? "#94A3B8",
+    estimated: Number(r.estimated_hours ?? 0),
+    consumed: Number(r.consumed_hours ?? 0),
+    sprint: r.sprint?.name ?? "—",
+    updatedAt: r.updated_at,
+  }));
 
   // Requerimientos por estado
   const byStatusMap = new Map<string, { name: string; color: string; value: number }>();
@@ -55,6 +69,8 @@ export default async function ReporteriaPage() {
       bySprint={bySprint}
       blocks={blocks}
       totals={{ total: requirements.length, finalized, pending }}
+      clientName={clientName}
+      reportReqs={reportReqs}
     />
   );
 }

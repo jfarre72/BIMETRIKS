@@ -218,7 +218,7 @@ function GroupTable({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
-                  <th className="w-8 py-2 pl-3"></th>
+                  <th className="w-12 py-2 pl-3">#</th>
                   <th className="px-2 py-2">ID</th>
                   <th className="px-2 py-2">Título</th>
                   <th className="px-2 py-2">Área</th>
@@ -237,7 +237,7 @@ function GroupTable({
                     </td>
                   </tr>
                 ) : (
-                  rows.map((r) => <Row key={r.id} req={r} onEdit={onEdit} onDelete={onDelete} onOpen={onOpen} />)
+                  rows.map((r, i) => <Row key={r.id} req={r} index={i + 1} onEdit={onEdit} onDelete={onDelete} onOpen={onOpen} />)
                 )}
               </tbody>
               {rows.length > 0 && (
@@ -260,11 +260,13 @@ function GroupTable({
 
 function Row({
   req,
+  index,
   onEdit,
   onDelete,
   onOpen,
 }: {
   req: Requirement;
+  index: number;
   onEdit: (r: Requirement) => void;
   onDelete: (r: Requirement) => void;
   onOpen: (id: string) => void;
@@ -279,18 +281,16 @@ function Row({
     <tr
       ref={setNodeRef}
       style={style}
+      {...attributes}
+      {...listeners}
       onClick={() => onOpen(req.id)}
-      className="cursor-pointer border-b border-line last:border-0 hover:bg-canvas/50"
+      className="cursor-grab touch-none border-b border-line last:border-0 hover:bg-canvas/50 active:cursor-grabbing"
     >
-      <td className="py-2 pl-3" onClick={(e) => e.stopPropagation()}>
-        <button
-          {...attributes}
-          {...listeners}
-          className="cursor-grab touch-none text-muted hover:text-ink active:cursor-grabbing"
-          aria-label="Arrastrar"
-        >
-          <GripVertical size={16} />
-        </button>
+      <td className="py-2 pl-3">
+        <span className="inline-flex items-center gap-1.5 text-muted">
+          <GripVertical size={14} className="opacity-60" />
+          <span className="tabular text-xs font-semibold">{index}</span>
+        </span>
       </td>
       <td className="whitespace-nowrap px-2 py-2 font-mono text-xs font-semibold text-brand">{req.code}</td>
       <td className="px-2 py-2 font-medium text-ink">{req.title}</td>

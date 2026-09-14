@@ -251,7 +251,7 @@ export async function quickLogHours(
     sprint_id: sprintId,
     entry_date: new Date().toISOString().slice(0, 10),
     hours,
-    description: description ?? "Horas reales al finalizar",
+    description: description ?? null,
     created_by: uid,
   });
   if (error) return { ok: false, error: error.message };
