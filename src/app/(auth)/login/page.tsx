@@ -1,5 +1,6 @@
 import { BarChart3, Users, ShieldCheck } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
+import { IsoCube } from "@/components/brand/iso-cube";
 import { LoginForm } from "./login-form";
 
 export default function LoginPage() {
@@ -8,35 +9,47 @@ export default function LoginPage() {
       {/* Panel izquierdo — marca / hero */}
       <section className="login-hero relative hidden flex-col justify-between overflow-hidden p-10 lg:flex xl:p-14">
         <div className="login-dots absolute inset-0 opacity-70" />
-        <div className="relative z-10">
+        {/* Cubo isométrico decorativo */}
+        <IsoCube className="pointer-events-none absolute -right-6 top-16 z-0 h-72 w-72 opacity-90 xl:right-6 xl:h-96 xl:w-96" />
+        {/* Textos técnicos flotantes */}
+        <span className="absolute right-10 top-1/2 z-0 -translate-y-1/2 text-right text-[10px] font-semibold uppercase leading-loose tracking-[0.3em] text-white/25">
+          Analyze<br />Plan<br />Grow
+        </span>
+
+        <div className="relative z-10 flex items-center justify-between">
           <Logo variant="light" />
+          <span className="hidden text-right text-[10px] font-semibold uppercase leading-relaxed tracking-[0.28em] text-white/40 xl:block">
+            Un mismo objetivo<br />Más posibilidades
+          </span>
         </div>
 
         <div className="relative z-10 max-w-md">
-          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
-            Un mismo objetivo · Más posibilidades
-          </p>
-          <h1 className="text-4xl font-bold leading-tight text-white xl:text-5xl">
-            Datos que impulsan{" "}
+          <h1 className="text-4xl font-bold leading-[1.1] text-white xl:text-5xl">
+            Datos que<br />impulsan{" "}
             <span className="bg-gradient-to-r from-sky to-brand-100 bg-clip-text text-transparent">
               mejores decisiones
             </span>
           </h1>
-          <p className="mt-4 text-sm leading-relaxed text-white/70">
+          <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/70">
             Un espacio centralizado para gestionar tus proyectos, acceder a reportes y colaborar con tu equipo.
           </p>
 
-          <div className="mt-8 grid grid-cols-3 gap-4">
+          <div className="mt-8 grid max-w-md grid-cols-3 gap-4">
             <Feature icon={<BarChart3 size={18} />} label="Información en tiempo real" />
             <Feature icon={<Users size={18} />} label="Trabajo colaborativo" />
             <Feature icon={<ShieldCheck size={18} />} label="Datos seguros y confiables" />
           </div>
         </div>
 
-        <div className="relative z-10 flex items-center gap-2">
-          <span className="h-px w-6 bg-lime" />
-          <span className="text-[10px] font-semibold uppercase tracking-[0.25em] text-white/50">
-            Decisiones inteligentes
+        <div className="relative z-10 flex items-end justify-between">
+          <div className="flex items-center gap-2">
+            <span className="h-px w-6 bg-lime" />
+            <span className="text-[10px] font-semibold uppercase tracking-[0.25em] text-white/50">
+              Decisiones inteligentes
+            </span>
+          </div>
+          <span className="text-right text-[10px] font-semibold uppercase leading-relaxed tracking-[0.3em] text-white/30">
+            People<br />Data<br />Impact
           </span>
         </div>
       </section>
