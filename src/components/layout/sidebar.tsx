@@ -9,6 +9,7 @@ import {
   Activity,
   Clock,
   BarChart3,
+  Settings,
   LogOut,
   Menu,
   X,
@@ -25,6 +26,7 @@ const NAV = [
   { href: "/tracking", label: "Tracking", icon: Activity },
   { href: "/horas", label: "Horas", icon: Clock },
   { href: "/reporteria", label: "Reportería", icon: BarChart3 },
+  { href: "/configuracion", label: "Configuración", icon: Settings },
 ];
 
 export function Sidebar({ user }: { user: { name: string; username: string } }) {
