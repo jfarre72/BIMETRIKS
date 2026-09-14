@@ -414,6 +414,112 @@ export async function deleteRequirementNote(id: string, requirementId: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Responsables (people)
+// ---------------------------------------------------------------------------
+export async function upsertPerson(payload: { id?: string; name: string; role?: string }) {
+  const name = payload.name?.trim();
+  if (!name) return { ok: false, error: "El nombre es obligatorio" };
+  const supabase = createClient();
+  const values = { name, role: payload.role?.trim() || null };
+  if (payload.id) {
+    const { error } = await supabase.from("people").update(values).eq("id", payload.id);
+    if (error) return { ok: false, error: error.message };
+  } else {
+    const projectId = await getProjectId();
+    const { data } = await supabase.from("people").select("sort_order").eq("project_id", projectId).order("sort_order", { ascending: false }).limit(1);
+    const sort_order = Number((data?.[0] as any)?.sort_order ?? 0) + 1;
+    const { error } = await supabase.from("people").insert({ ...values, project_id: projectId, sort_order });
+    if (error) return { ok: false, error: error.message };
+  }
+  clearReadCache();
+  revalidatePath("/configuracion");
+  revalidatePath("/backlog");
+  return { ok: true };
+}
+
+export async function deletePerson(id: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from("people").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  clearReadCache();
+  revalidatePath("/configuracion");
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Tareas
+// ---------------------------------------------------------------------------
+export async function quickAddTask(title: string) {
+  const t = title.trim();
+  if (!t) return { ok: false, error: "Escribí un tema" };
+  const supabase = createClient();
+  const uid = await currentProfileId();
+  const { error } = await supabase.from("tasks").insert({ project_id: await getProjectId(), title: t, created_by: uid });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/tareas");
+  return { ok: true };
+}
+
+export async function saveTask(payload: {
+  id?: string; title: string; detail?: string; assignee?: string; label?: string; due_date?: string | null;
+}) {
+  const title = payload.title?.trim();
+  if (!title) return { ok: false, error: "El tema es obligatorio" };
+  const supabase = createClient();
+  const uid = await currentProfileId();
+  const values = {
+    title,
+    detail: payload.detail?.trim() || null,
+    assignee: payload.assignee?.trim() || null,
+    label: payload.label?.trim() || null,
+    due_date: payload.due_date || null,
+  };
+  if (payload.id) {
+    const { error } = await supabase.from("tasks").update(values).eq("id", payload.id);
+    if (error) return { ok: false, error: error.message };
+  } else {
+    const { error } = await supabase.from("tasks").insert({ ...values, project_id: await getProjectId(), created_by: uid });
+    if (error) return { ok: false, error: error.message };
+  }
+  revalidatePath("/tareas");
+  return { ok: true };
+}
+
+export async function toggleTask(id: string, done: boolean) {
+  const supabase = createClient();
+  const { error } = await supabase.from("tasks").update({ done, done_at: done ? new Date().toISOString() : null }).eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/tareas");
+  return { ok: true };
+}
+
+export async function deleteTask(id: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from("tasks").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/tareas");
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Editar bloque de horas contratadas
+// ---------------------------------------------------------------------------
+export async function updateContractedHours(id: string, payload: { entry_date: string; hours: number; note?: string }) {
+  if (!payload.hours || payload.hours <= 0) return { ok: false, error: "Las horas deben ser mayores a 0" };
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("contracted_hours")
+    .update({ entry_date: payload.entry_date, hours: payload.hours, note: payload.note?.trim() || null })
+    .eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  clearReadCache();
+  revalidatePath("/horas");
+  revalidatePath("/facturacion");
+  revalidatePath("/");
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
 // Auth
 // ---------------------------------------------------------------------------
 export async function signOut() {

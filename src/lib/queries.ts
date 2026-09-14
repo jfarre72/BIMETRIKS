@@ -20,8 +20,8 @@ const REQ_SELECT = `
   type:req_types(id,name,color),
   priority:req_priorities(id,name,color,weight),
   status:req_statuses(id,name,color,is_final),
-  assignee:profiles!requirements_assignee_id_fkey(id,username,full_name,role),
-  validator:profiles!requirements_validator_id_fkey(id,username,full_name,role),
+  assignee:people!requirements_assignee_id_fkey(id,name,role),
+  validator:people!requirements_validator_id_fkey(id,name,role),
   time_entries(hours),
   sprint_requirements(sprint:sprints(id,name))
 `;
@@ -46,7 +46,7 @@ async function _getCatalogs(): Promise<Catalogs> {
     supabase.from("req_statuses").select("id,name,color,is_final,sort_order").eq("project_id", PROJECT_ID).order("sort_order"),
     supabase.from("req_priorities").select("id,name,color,weight").eq("project_id", PROJECT_ID).order("weight", { ascending: false }),
     supabase.from("req_types").select("id,name,color").eq("project_id", PROJECT_ID).order("name"),
-    supabase.from("profiles").select("id,username,full_name,role").order("full_name"),
+    supabase.from("people").select("id,name,role,sort_order").eq("project_id", PROJECT_ID).order("sort_order").order("name"),
     supabase.from("sprints").select("id,name,status").eq("project_id", PROJECT_ID).is("archived_at", null).order("created_at", { ascending: false }),
   ]);
   return {
@@ -204,6 +204,31 @@ export async function getHourBlocks(): Promise<HourBlock[]> {
       return { label, contracted, consumed, available: contracted - consumed };
     });
   });
+}
+
+export async function getTasks() {
+  const supabase = createClient();
+  const PROJECT_ID = await getProjectId();
+  const { data } = await supabase
+    .from("tasks")
+    .select("id,title,detail,assignee,label,due_date,done,created_at")
+    .eq("project_id", PROJECT_ID)
+    .order("done", { ascending: true })
+    .order("due_date", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: false });
+  return (data ?? []) as any[];
+}
+
+export async function getPeople() {
+  const supabase = createClient();
+  const PROJECT_ID = await getProjectId();
+  const { data } = await supabase
+    .from("people")
+    .select("id,name,role,sort_order")
+    .eq("project_id", PROJECT_ID)
+    .order("sort_order")
+    .order("name");
+  return (data ?? []) as any[];
 }
 
 export async function getArchivedSprints(): Promise<Sprint[]> {

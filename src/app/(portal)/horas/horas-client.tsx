@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, Plus, FilePlus2, Loader2, Trash2 } from "lucide-react";
+import { Clock, Plus, FilePlus2, Loader2, Trash2, Pencil } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button, Card, CardBody, CardHeader, CardTitle, Input, Label, Select, Textarea, Badge, EmptyState } from "@/components/ui";
 import { StatCard } from "@/components/ui/stat-card";
 import { Modal } from "@/components/ui/sheet";
 import { formatHours, formatDate, pct } from "@/lib/utils";
-import { addTimeEntry, addContractedHours, deleteTimeEntry, deleteContractedHours } from "@/lib/actions";
+import { addTimeEntry, addContractedHours, deleteTimeEntry, deleteContractedHours, updateContractedHours } from "@/lib/actions";
 import type { ContractedHours, TimeEntry } from "@/lib/types";
 
 type MiniReq = { id: string; code: string; title: string };
@@ -30,6 +30,7 @@ export function HorasClient({
   const router = useRouter();
   const [entryOpen, setEntryOpen] = useState(false);
   const [contractOpen, setContractOpen] = useState(false);
+  const [editContract, setEditContract] = useState<ContractedHours | null>(null);
 
   async function onDeleteEntry(id: string) {
     if (!confirm("¿Eliminar este registro de horas?")) return;
@@ -127,7 +128,10 @@ export function HorasClient({
                       <td className="whitespace-nowrap py-2.5 pr-3 text-muted">{formatDate(c.entry_date)}</td>
                       <td className="px-3 py-2.5">{c.note ?? "—"}</td>
                       <td className="px-3 py-2.5 text-right tabular font-medium text-green-600">+{formatHours(c.hours)}</td>
-                      <td className="pr-2 text-right">
+                      <td className="whitespace-nowrap pr-2 text-right">
+                        <button onClick={() => setEditContract(c)} className="rounded p-1 text-muted opacity-0 hover:bg-canvas hover:text-ink group-hover:opacity-100" aria-label="Editar">
+                          <Pencil size={14} />
+                        </button>
                         <button onClick={() => onDeleteContracted(c.id)} className="rounded p-1 text-muted opacity-0 hover:bg-red-50 hover:text-red-600 group-hover:opacity-100" aria-label="Eliminar">
                           <Trash2 size={14} />
                         </button>
@@ -150,6 +154,7 @@ export function HorasClient({
 
       <TimeEntryModal open={entryOpen} onClose={() => setEntryOpen(false)} requirements={requirements} sprints={sprints} />
       <ContractedModal open={contractOpen} onClose={() => setContractOpen(false)} />
+      <EditContractedModal block={editContract} onClose={() => setEditContract(null)} />
     </div>
   );
 }
@@ -213,6 +218,41 @@ function ContractedModal({ open, onClose }: { open: boolean; onClose: () => void
           <div><Label>Horas</Label><Input type="number" name="hours" step="1" min="1" placeholder="50" required /></div>
         </div>
         <div><Label>Observación</Label><Textarea name="note" rows={2} placeholder="Primer bloque de servicio" /></div>
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button><Button type="submit" disabled={pending}>{pending && <Loader2 size={15} className="animate-spin" />} Guardar</Button></div>
+      </form>
+    </Modal>
+  );
+}
+
+function EditContractedModal({ block, onClose }: { block: ContractedHours | null; onClose: () => void }) {
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!block) return null;
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setPending(true); setError(null);
+    const fd = new FormData(e.currentTarget);
+    const res = await updateContractedHours(block!.id, {
+      entry_date: String(fd.get("entry_date")),
+      hours: Number(fd.get("hours")),
+      note: String(fd.get("note") ?? ""),
+    });
+    setPending(false);
+    if (!res.ok) return setError(res.error ?? "Error");
+    onClose(); router.refresh();
+  }
+
+  return (
+    <Modal open onClose={onClose} title="Editar bloque contratado">
+      <form onSubmit={onSubmit} className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div><Label>Fecha</Label><Input type="date" name="entry_date" defaultValue={block.entry_date} required /></div>
+          <div><Label>Horas</Label><Input type="number" name="hours" step="1" min="1" defaultValue={block.hours} required /></div>
+        </div>
+        <div><Label>Observación</Label><Textarea name="note" rows={2} defaultValue={block.note ?? ""} /></div>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button><Button type="submit" disabled={pending}>{pending && <Loader2 size={15} className="animate-spin" />} Guardar</Button></div>
       </form>

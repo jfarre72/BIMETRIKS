@@ -7,11 +7,12 @@ export const dynamic = "force-dynamic";
 export default async function ConfiguracionPage() {
   const supabase = createClient();
   const PROJECT_ID = await getProjectId();
-  const [areas, statuses, priorities, types] = await Promise.all([
+  const [areas, statuses, priorities, types, people] = await Promise.all([
     supabase.from("areas").select("id,name,sort_order").eq("project_id", PROJECT_ID).order("sort_order"),
     supabase.from("req_statuses").select("id,name,color,is_final,sort_order").eq("project_id", PROJECT_ID).order("sort_order"),
     supabase.from("req_priorities").select("id,name,color,weight").eq("project_id", PROJECT_ID).order("weight", { ascending: false }),
     supabase.from("req_types").select("id,name,color").eq("project_id", PROJECT_ID).order("name"),
+    supabase.from("people").select("id,name,role").eq("project_id", PROJECT_ID).order("sort_order").order("name"),
   ]);
 
   const map = (rows: any[], orderField?: string): CatalogRow[] =>
@@ -31,6 +32,7 @@ export default async function ConfiguracionPage() {
         req_priorities: map(priorities.data ?? [], "weight"),
         req_types: map(types.data ?? []),
       }}
+      people={(people.data as any) ?? []}
     />
   );
 }
