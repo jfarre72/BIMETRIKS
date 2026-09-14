@@ -55,9 +55,19 @@ export async function saveRequirement(_prev: ActionResult | null, formData: Form
     return { ok: true, id };
   }
 
+  const projectId = await getProjectId();
+  // Nuevo requerimiento cae al fondo de "Sin asignar" (mayor sort_index + 10).
+  const { data: last } = await supabase
+    .from("requirements")
+    .select("sort_index")
+    .eq("project_id", projectId)
+    .order("sort_index", { ascending: false })
+    .limit(1);
+  const nextIndex = Number((last?.[0] as any)?.sort_index ?? 0) + 10;
+
   const { data, error } = await supabase
     .from("requirements")
-    .insert({ ...values, project_id: await getProjectId(), created_by: uid, updated_by: uid })
+    .insert({ ...values, project_id: projectId, sort_index: nextIndex, created_by: uid, updated_by: uid })
     .select("id")
     .single();
   if (error) return { ok: false, error: error.message };
@@ -141,6 +151,40 @@ export async function assignToSprint(sprintId: string, requirementIds: string[])
   revalidatePath("/backlog");
   revalidatePath("/sprints");
   revalidatePath(`/sprints/${sprintId}`);
+  return { ok: true };
+}
+
+/**
+ * Mueve un requerimiento a un grupo (sprint o "sin asignar") y persiste el
+ * orden del grupo destino. `targetSprintId` null = sin asignar.
+ * `orderedIds` es la lista completa de IDs del grupo destino, en el nuevo orden.
+ */
+export async function moveRequirement(
+  requirementId: string,
+  targetSprintId: string | null,
+  orderedIds: string[]
+) {
+  const supabase = createClient();
+  const uid = await currentProfileId();
+
+  // 1) Reasignar sprint: sacar de cualquier sprint y, si corresponde, asignar al destino.
+  await supabase.from("sprint_requirements").delete().eq("requirement_id", requirementId);
+  if (targetSprintId) {
+    const { error } = await supabase
+      .from("sprint_requirements")
+      .insert({ sprint_id: targetSprintId, requirement_id: requirementId, added_by: uid });
+    if (error) return { ok: false, error: error.message };
+  }
+
+  // 2) Persistir el orden del grupo destino (sort_index = posición * 10).
+  await Promise.all(
+    orderedIds.map((id, i) =>
+      supabase.from("requirements").update({ sort_index: (i + 1) * 10 }).eq("id", id)
+    )
+  );
+
+  revalidatePath("/backlog");
+  revalidatePath("/sprints");
   return { ok: true };
 }
 

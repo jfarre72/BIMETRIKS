@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, ArrowRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Search } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, Input, EmptyState } from "@/components/ui";
 import { StatusBadge, PriorityBadge } from "@/components/shared/req-badges";
@@ -10,6 +11,7 @@ import { formatHours } from "@/lib/utils";
 import type { Requirement } from "@/lib/types";
 
 export function TrackingSelector({ requirements }: { requirements: Requirement[] }) {
+  const router = useRouter();
   const [q, setQ] = useState("");
   const filtered = useMemo(
     () => requirements.filter((r) => `${r.code} ${r.title}`.toLowerCase().includes(q.toLowerCase())),
@@ -23,35 +25,58 @@ export function TrackingSelector({ requirements }: { requirements: Requirement[]
       <Card className="mb-4 p-4">
         <div className="relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-          <Input className="pl-9" placeholder="Buscar requerimiento por ID o título…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <Input
+            className="pl-9"
+            placeholder="Buscar requerimiento por ID o título…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
         </div>
       </Card>
 
       {filtered.length === 0 ? (
         <EmptyState title="Sin resultados" description="Probá con otro término de búsqueda." />
       ) : (
-        <div className="grid gap-3 md:grid-cols-2">
-          {filtered.map((r) => (
-            <Link key={r.id} href={`/tracking/${r.id}`}>
-              <Card className="p-4 transition-shadow hover:shadow-float">
-                <div className="flex items-start justify-between">
-                  <div className="min-w-0">
-                    <span className="font-mono text-xs font-semibold text-brand">{r.code}</span>
-                    <p className="mt-0.5 truncate font-medium text-ink">{r.title}</p>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <StatusBadge status={r.status} />
-                      <PriorityBadge priority={r.priority} />
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <span className="tabular text-sm font-medium">{formatHours(r.consumed_hours)}</span>
-                    <ArrowRight size={16} className="text-muted" />
-                  </div>
-                </div>
-              </Card>
-            </Link>
-          ))}
-        </div>
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-line bg-canvas/60 text-left text-xs uppercase tracking-wide text-muted">
+                  <th className="px-4 py-3">ID</th>
+                  <th className="px-3 py-3">Título</th>
+                  <th className="px-3 py-3">Área</th>
+                  <th className="px-3 py-3">Prioridad</th>
+                  <th className="px-3 py-3">Estado</th>
+                  <th className="px-3 py-3">Sprint</th>
+                  <th className="px-3 py-3 text-right">Est.</th>
+                  <th className="px-3 py-3 text-right">Cons.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((r) => (
+                  <tr
+                    key={r.id}
+                    onClick={() => router.push(`/tracking/${r.id}`)}
+                    className="cursor-pointer border-b border-line last:border-0 hover:bg-canvas/50"
+                  >
+                    <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-semibold text-brand">
+                      <Link href={`/tracking/${r.id}`} onClick={(e) => e.stopPropagation()} className="hover:underline">
+                        {r.code}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-3 font-medium text-ink">{r.title}</td>
+                    <td className="whitespace-nowrap px-3 py-3 text-muted">{r.area?.name ?? "—"}</td>
+                    <td className="px-3 py-3"><PriorityBadge priority={r.priority} /></td>
+                    <td className="px-3 py-3"><StatusBadge status={r.status} /></td>
+                    <td className="whitespace-nowrap px-3 py-3 text-muted">{r.sprint?.name ?? "—"}</td>
+                    <td className="px-3 py-3 text-right tabular text-muted">{formatHours(r.estimated_hours)}</td>
+                    <td className="px-3 py-3 text-right tabular font-medium">{formatHours(r.consumed_hours)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
     </div>
   );

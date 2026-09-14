@@ -1,71 +1,143 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Plus, Layers, Calendar, ArrowRight } from "lucide-react";
+import { Plus, Layers, ChevronDown, ChevronRight, Calendar } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
-import { Button, Card, CardBody, ProgressBar, EmptyState } from "@/components/ui";
+import { Button, Card, ProgressBar, EmptyState } from "@/components/ui";
 import { SprintStatusBadge } from "@/components/shared/sprint-status";
+import { PriorityBadge } from "@/components/shared/req-badges";
+import { StatusSelect } from "@/components/shared/status-select";
 import { formatHours, formatDate, pct } from "@/lib/utils";
-import type { Sprint } from "@/lib/types";
+import type { Catalogs, Requirement, Sprint } from "@/lib/types";
 import { SprintForm } from "./sprint-form";
 
-export function SprintsClient({ sprints }: { sprints: Sprint[] }) {
+export function SprintsClient({
+  sprints,
+  requirements,
+  statuses,
+}: {
+  sprints: Sprint[];
+  requirements: Requirement[];
+  statuses: Catalogs["statuses"];
+}) {
   const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set(sprints[0] ? [sprints[0].id] : []));
+
+  const bySprint = useMemo(() => {
+    const map: Record<string, Requirement[]> = {};
+    requirements.forEach((r) => {
+      if (r.sprint?.id) (map[r.sprint.id] ??= []).push(r);
+    });
+    return map;
+  }, [requirements]);
+
+  function toggle(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
 
   return (
     <div>
       <PageHeader
         title="Sprints"
-        subtitle="Bloques de trabajo"
+        subtitle="Bloques de trabajo — desplegá para ver y cambiar el estado de cada requerimiento"
         actions={<Button onClick={() => setOpen(true)}><Plus size={16} /> Nuevo sprint</Button>}
       />
 
       {sprints.length === 0 ? (
         <EmptyState
           title="Aún no hay sprints"
-          description="Creá un sprint y luego asigná requerimientos desde el Backlog."
+          description="Creá un sprint y luego asigná requerimientos desde el Backlog (arrastrando)."
           icon={<Layers size={28} />}
           action={<Button onClick={() => setOpen(true)}><Plus size={16} /> Nuevo sprint</Button>}
         />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="space-y-4">
           {sprints.map((s) => {
+            const rows = bySprint[s.id] ?? [];
+            const isOpen = expanded.has(s.id);
             const progress = pct(s.consumed_hours ?? 0, s.estimated_hours ?? 0);
             return (
-              <Card key={s.id} className="transition-shadow hover:shadow-float">
-                <CardBody>
-                  <div className="mb-3 flex items-start justify-between">
-                    <div>
-                      <Link href={`/sprints/${s.id}`} className="text-base font-semibold text-ink hover:text-brand">
-                        {s.name}
-                      </Link>
-                      {s.description && <p className="mt-0.5 line-clamp-1 text-sm text-muted">{s.description}</p>}
+              <Card key={s.id} className="overflow-hidden">
+                {/* Cabecera plegable */}
+                <button
+                  onClick={() => toggle(s.id)}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-canvas/50"
+                >
+                  <span className="text-muted">{isOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-ink">{s.name}</span>
+                      <SprintStatusBadge status={s.status} />
+                      <span className="rounded-full bg-line/70 px-2 py-0.5 text-xs tabular text-muted">{rows.length} reqs</span>
                     </div>
-                    <SprintStatusBadge status={s.status} />
+                    {s.target_date && (
+                      <span className="mt-0.5 flex items-center gap-1 text-xs text-muted">
+                        <Calendar size={12} /> Objetivo: {formatDate(s.target_date)}
+                      </span>
+                    )}
                   </div>
+                  <div className="hidden w-40 sm:block">
+                    <div className="mb-1 flex justify-between text-xs text-muted">
+                      <span>{formatHours(s.consumed_hours)} / {formatHours(s.estimated_hours)}</span>
+                      <span>{progress}%</span>
+                    </div>
+                    <ProgressBar value={progress} />
+                  </div>
+                  <Link
+                    href={`/sprints/${s.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="hidden text-xs font-medium text-brand hover:underline md:block"
+                  >
+                    Ver detalle
+                  </Link>
+                </button>
 
-                  <div className="mb-3 flex items-center gap-4 text-xs text-muted">
-                    <span className="flex items-center gap-1"><Layers size={13} /> {s.requirement_count} reqs</span>
-                    {s.target_date && <span className="flex items-center gap-1"><Calendar size={13} /> {formatDate(s.target_date)}</span>}
+                {/* Tabla desplegable */}
+                {isOpen && (
+                  <div className="border-t border-line">
+                    {rows.length === 0 ? (
+                      <p className="px-4 py-6 text-center text-sm text-muted">
+                        Sin requerimientos. Asignalos arrastrando desde el Backlog.
+                      </p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
+                              <th className="px-4 py-2">ID</th>
+                              <th className="px-2 py-2">Título</th>
+                              <th className="px-2 py-2">Prioridad</th>
+                              <th className="px-2 py-2">Estado</th>
+                              <th className="px-2 py-2 text-right">Est.</th>
+                              <th className="px-2 py-2 text-right">Cons.</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {rows.map((r) => (
+                              <tr key={r.id} className="border-b border-line last:border-0 hover:bg-canvas/40">
+                                <td className="whitespace-nowrap px-4 py-2 font-mono text-xs font-semibold text-brand">
+                                  <Link href={`/tracking/${r.id}`} className="hover:underline">{r.code}</Link>
+                                </td>
+                                <td className="px-2 py-2 font-medium text-ink">{r.title}</td>
+                                <td className="px-2 py-2"><PriorityBadge priority={r.priority} /></td>
+                                <td className="px-2 py-2">
+                                  <StatusSelect requirementId={r.id} value={r.status_id} statuses={statuses} />
+                                </td>
+                                <td className="px-2 py-2 text-right tabular text-muted">{formatHours(r.estimated_hours)}</td>
+                                <td className="px-2 py-2 text-right tabular font-medium">{formatHours(r.consumed_hours)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
-
-                  <div className="mb-2 flex justify-between text-sm">
-                    <span className="text-muted">Estimado</span>
-                    <span className="tabular font-medium">{formatHours(s.estimated_hours)}</span>
-                  </div>
-                  <div className="mb-2 flex justify-between text-sm">
-                    <span className="text-muted">Consumido</span>
-                    <span className="tabular font-medium">{formatHours(s.consumed_hours)}</span>
-                  </div>
-                  <ProgressBar value={progress} />
-                  <div className="mt-3 flex items-center justify-between">
-                    <span className="text-xs text-muted">{progress}% avance</span>
-                    <Link href={`/sprints/${s.id}`} className="flex items-center gap-1 text-xs font-medium text-brand hover:underline">
-                      Ver detalle <ArrowRight size={13} />
-                    </Link>
-                  </div>
-                </CardBody>
+                )}
               </Card>
             );
           })}

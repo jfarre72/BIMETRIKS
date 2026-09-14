@@ -35,6 +35,7 @@ export interface Requirement {
   module: string | null;
   estimated_hours: number;
   observations: string | null;
+  sort_index?: number;
   area_id: string | null;
   type_id: string | null;
   priority_id: string | null;
