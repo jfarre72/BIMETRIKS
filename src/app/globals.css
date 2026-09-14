@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background-color: #f7f9fc;
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Números tabulares para horas y métricas */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Scrollbar sutil */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #d5dce8;
+  border-radius: 999px;
+  border: 2px solid #f7f9fc;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #b9c4d6;
+}
+
+/* Fondo tech del login (patrón sutil de puntos sobre navy) */
+.login-hero {
+  background:
+    radial-gradient(circle at 80% 10%, rgba(79, 178, 240, 0.18), transparent 40%),
+    radial-gradient(circle at 20% 90%, rgba(30, 94, 255, 0.22), transparent 45%),
+    linear-gradient(160deg, #0a1a3f 0%, #0d2a57 55%, #0f3aa0 120%);
+}
+.login-dots {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
