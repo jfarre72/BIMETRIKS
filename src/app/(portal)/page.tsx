@@ -5,13 +5,14 @@ import { formatHours, pct, formatDateShort } from "@/lib/utils";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardBody, CardHeader, CardTitle, ProgressBar, Badge, EmptyState } from "@/components/ui";
 import { StatCard } from "@/components/ui/stat-card";
-import { HoursGauge } from "@/components/dashboard/hours-gauge";
+import { HoursDonut } from "@/components/dashboard/hours-donut";
 import { StatusDonut } from "@/components/dashboard/status-donut";
+import { HourBlocksChart } from "@/components/dashboard/hour-blocks-chart";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const { hours, requirements, activeSprint, recentNotes, recentEntries } = await getDashboard();
+  const { hours, requirements, activeSprint, recentNotes, recentEntries, blocks } = await getDashboard();
   const byStatus = groupByStatus(requirements);
 
   return (
@@ -26,12 +27,15 @@ export default async function DashboardPage() {
         <StatCard label="% utilizado" value={`${pct(hours.consumed, hours.contracted)}%`} icon={<TrendingUp size={18} />} accent="#4FB2F0" />
       </div>
 
-      {/* Consumo de horas + torta de estados (a la derecha) */}
-      <div className="mt-4 grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <HoursGauge contracted={hours.contracted} consumed={hours.consumed} available={hours.available} />
-        </div>
+      {/* Torta de utilización + torta de estados */}
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <HoursDonut consumed={hours.consumed} available={hours.available} />
         <StatusDonut data={byStatus} total={requirements.length} />
+      </div>
+
+      {/* Horas por bloque */}
+      <div className="mt-4">
+        <HourBlocksChart blocks={blocks} />
       </div>
 
       {/* Sprint activo + últimos movimientos */}

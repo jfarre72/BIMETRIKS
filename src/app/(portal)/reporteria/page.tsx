@@ -1,14 +1,15 @@
-import { getProjectHours, getRequirements, getSprints, getTimeEntries } from "@/lib/queries";
+import { getProjectHours, getRequirements, getSprints, getTimeEntries, getHourBlocks } from "@/lib/queries";
 import { ReporteriaClient } from "./reporteria-client";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReporteriaPage() {
-  const [hours, requirements, sprints, entries] = await Promise.all([
+  const [hours, requirements, sprints, entries, blocks] = await Promise.all([
     getProjectHours(),
     getRequirements(),
     getSprints(),
     getTimeEntries(500),
+    getHourBlocks(),
   ]);
 
   // Requerimientos por estado
@@ -52,6 +53,7 @@ export default async function ReporteriaPage() {
       byArea={[...byAreaMap.entries()].map(([name, value]) => ({ name, value }))}
       evolution={evolution}
       bySprint={bySprint}
+      blocks={blocks}
       totals={{ total: requirements.length, finalized, pending }}
     />
   );

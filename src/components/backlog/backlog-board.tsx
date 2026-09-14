@@ -21,7 +21,8 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Layers, Inbox, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { GripVertical, Layers, Inbox, Trash2, Pencil, ExternalLink } from "lucide-react";
 import { Card } from "@/components/ui";
 import { StatusBadge, PriorityBadge } from "@/components/shared/req-badges";
 import { SprintStatusBadge } from "@/components/shared/sprint-status";
@@ -143,6 +144,8 @@ export function BacklogBoard({
               rows={groups[gid] ?? []}
               onEdit={onEdit}
               onDelete={onDelete}
+              onOpen={(id) => router.push(`/tracking/${id}`)}
+              sprintHref={isUnassigned ? undefined : `/sprints/${gid}`}
             />
           );
         })}
@@ -168,6 +171,8 @@ function GroupTable({
   rows,
   onEdit,
   onDelete,
+  onOpen,
+  sprintHref,
 }: {
   groupId: string;
   title: string;
@@ -177,6 +182,8 @@ function GroupTable({
   rows: Requirement[];
   onEdit: (r: Requirement) => void;
   onDelete: (r: Requirement) => void;
+  onOpen: (id: string) => void;
+  sprintHref?: string;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: groupId });
   const totalEst = rows.reduce((a, r) => a + Number(r.estimated_hours ?? 0), 0);
@@ -187,11 +194,22 @@ function GroupTable({
       <div className="flex items-center justify-between border-b border-line bg-canvas/60 px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="text-muted">{icon}</span>
-          <h3 className="text-sm font-semibold text-ink">{title}</h3>
+          {sprintHref ? (
+            <Link href={sprintHref} className="group inline-flex items-center gap-1 text-sm font-semibold text-ink hover:text-brand">
+              {title}
+              <ExternalLink size={13} className="text-muted group-hover:text-brand" />
+            </Link>
+          ) : (
+            <h3 className="text-sm font-semibold text-ink">{title}</h3>
+          )}
           <span className="rounded-full bg-line/70 px-2 py-0.5 text-xs tabular text-muted">{rows.length}</span>
           {status && <SprintStatusBadge status={status} />}
         </div>
-        {subtitle && <span className="hidden text-xs text-muted sm:block">{subtitle}</span>}
+        {sprintHref ? (
+          <Link href={sprintHref} className="hidden text-xs font-medium text-brand hover:underline sm:block">Ir al sprint</Link>
+        ) : (
+          subtitle && <span className="hidden text-xs text-muted sm:block">{subtitle}</span>
+        )}
       </div>
 
       <SortableContext items={rows.map((r) => r.id)} strategy={verticalListSortingStrategy}>
@@ -219,7 +237,7 @@ function GroupTable({
                     </td>
                   </tr>
                 ) : (
-                  rows.map((r) => <Row key={r.id} req={r} onEdit={onEdit} onDelete={onDelete} />)
+                  rows.map((r) => <Row key={r.id} req={r} onEdit={onEdit} onDelete={onDelete} onOpen={onOpen} />)
                 )}
               </tbody>
               {rows.length > 0 && (
@@ -244,10 +262,12 @@ function Row({
   req,
   onEdit,
   onDelete,
+  onOpen,
 }: {
   req: Requirement;
   onEdit: (r: Requirement) => void;
   onDelete: (r: Requirement) => void;
+  onOpen: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: req.id });
   const style: React.CSSProperties = {
@@ -259,7 +279,7 @@ function Row({
     <tr
       ref={setNodeRef}
       style={style}
-      onClick={() => onEdit(req)}
+      onClick={() => onOpen(req.id)}
       className="cursor-pointer border-b border-line last:border-0 hover:bg-canvas/50"
     >
       <td className="py-2 pl-3" onClick={(e) => e.stopPropagation()}>
@@ -279,7 +299,10 @@ function Row({
       <td className="px-2 py-2"><StatusBadge status={req.status} /></td>
       <td className="px-2 py-2 text-right tabular text-muted">{formatHours(req.estimated_hours)}</td>
       <td className="px-2 py-2 text-right tabular font-medium">{formatHours(req.consumed_hours)}</td>
-      <td className="px-2 py-2 text-right" onClick={(e) => e.stopPropagation()}>
+      <td className="whitespace-nowrap px-2 py-2 text-right" onClick={(e) => e.stopPropagation()}>
+        <button onClick={() => onEdit(req)} className="rounded-lg p-1 text-muted hover:bg-canvas hover:text-ink" aria-label="Editar">
+          <Pencil size={15} />
+        </button>
         <button onClick={() => onDelete(req)} className="rounded-lg p-1 text-muted hover:bg-red-50 hover:text-red-600" aria-label="Eliminar">
           <Trash2 size={15} />
         </button>

@@ -29,7 +29,7 @@ const NAV = [
   { href: "/configuracion", label: "Configuración", icon: Settings },
 ];
 
-export function Sidebar({ user }: { user: { name: string; username: string } }) {
+export function Sidebar({ user, clientName }: { user: { name: string; username: string }; clientName?: string }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -59,6 +59,13 @@ export function Sidebar({ user }: { user: { name: string; username: string } }) 
             <X size={20} />
           </button>
         </div>
+
+        {clientName && (
+          <div className="mx-3 mb-3 rounded-xl border border-navy-800 bg-white/5 px-3 py-2">
+            <p className="text-[10px] uppercase tracking-wider text-white/40">Cliente</p>
+            <p className="truncate text-sm font-semibold text-white">{clientName}</p>
+          </div>
+        )}
 
         <nav className="flex-1 space-y-1 px-3">
           {NAV.map(({ href, label, icon: Icon }) => (

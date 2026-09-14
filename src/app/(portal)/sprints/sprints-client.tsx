@@ -139,10 +139,12 @@ export function SprintsClient({
                           </thead>
                           <tbody>
                             {rows.map((r) => (
-                              <tr key={r.id} className="border-b border-line last:border-0 hover:bg-canvas/40">
-                                <td className="whitespace-nowrap px-4 py-2 font-mono text-xs font-semibold text-brand">
-                                  <Link href={`/tracking/${r.id}`} className="hover:underline">{r.code}</Link>
-                                </td>
+                              <tr
+                                key={r.id}
+                                onClick={() => router.push(`/tracking/${r.id}`)}
+                                className="cursor-pointer border-b border-line last:border-0 hover:bg-canvas/40"
+                              >
+                                <td className="whitespace-nowrap px-4 py-2 font-mono text-xs font-semibold text-brand">{r.code}</td>
                                 <td className="px-2 py-2 font-medium text-ink">{r.title}</td>
                                 <td className="px-2 py-2"><PriorityBadge priority={r.priority} /></td>
                                 <td className="px-2 py-2">

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getProjectId } from "@/lib/project";
+import { clearReadCache } from "@/lib/cache";
 
 async function currentProfileId(): Promise<string | null> {
   const supabase = createClient();
@@ -52,7 +53,8 @@ export async function saveRequirement(_prev: ActionResult | null, formData: Form
     if (error) return { ok: false, error: error.message };
     revalidatePath("/backlog");
     revalidatePath(`/tracking/${id}`);
-    return { ok: true, id };
+    clearReadCache();
+  return { ok: true, id };
   }
 
   const projectId = await getProjectId();
@@ -72,6 +74,7 @@ export async function saveRequirement(_prev: ActionResult | null, formData: Form
     .single();
   if (error) return { ok: false, error: error.message };
   revalidatePath("/backlog");
+  clearReadCache();
   return { ok: true, id: data?.id };
 }
 
@@ -85,6 +88,7 @@ export async function updateRequirementField(id: string, field: "status_id" | "p
   if (error) return { ok: false, error: error.message };
   revalidatePath("/backlog");
   revalidatePath(`/tracking/${id}`);
+  clearReadCache();
   return { ok: true };
 }
 
@@ -108,6 +112,7 @@ export async function addRequirementNote(_prev: ActionResult | null, formData: F
   });
   if (error) return { ok: false, error: error.message };
   revalidatePath(`/tracking/${reqId}`);
+  clearReadCache();
   return { ok: true };
 }
 
@@ -139,6 +144,7 @@ export async function saveSprint(_prev: ActionResult | null, formData: FormData)
     if (error) return { ok: false, error: error.message };
   }
   revalidatePath("/sprints");
+  clearReadCache();
   return { ok: true };
 }
 
@@ -151,6 +157,7 @@ export async function assignToSprint(sprintId: string, requirementIds: string[])
   revalidatePath("/backlog");
   revalidatePath("/sprints");
   revalidatePath(`/sprints/${sprintId}`);
+  clearReadCache();
   return { ok: true };
 }
 
@@ -185,6 +192,7 @@ export async function moveRequirement(
 
   revalidatePath("/backlog");
   revalidatePath("/sprints");
+  clearReadCache();
   return { ok: true };
 }
 
@@ -197,6 +205,7 @@ export async function removeFromSprint(sprintId: string, requirementId: string) 
     .eq("requirement_id", requirementId);
   if (error) return { ok: false, error: error.message };
   revalidatePath(`/sprints/${sprintId}`);
+  clearReadCache();
   return { ok: true };
 }
 
@@ -222,6 +231,7 @@ export async function addTimeEntry(_prev: ActionResult | null, formData: FormDat
   revalidatePath("/horas");
   revalidatePath("/");
   if (parsed.data.requirement_id) revalidatePath(`/tracking/${parsed.data.requirement_id}`);
+  clearReadCache();
   return { ok: true };
 }
 
@@ -250,6 +260,7 @@ export async function quickLogHours(
   revalidatePath("/horas");
   revalidatePath("/");
   revalidatePath(`/tracking/${requirementId}`);
+  clearReadCache();
   return { ok: true };
 }
 
@@ -269,6 +280,7 @@ export async function addContractedHours(_prev: ActionResult | null, formData: F
   if (error) return { ok: false, error: error.message };
   revalidatePath("/horas");
   revalidatePath("/");
+  clearReadCache();
   return { ok: true };
 }
 
@@ -288,6 +300,7 @@ export async function deleteRequirement(id: string) {
   revalidatePath("/backlog");
   revalidatePath("/sprints");
   revalidatePath("/tracking");
+  clearReadCache();
   return { ok: true };
 }
 
@@ -297,6 +310,7 @@ export async function deleteSprint(id: string) {
   if (error) return { ok: false, error: error.message };
   revalidatePath("/sprints");
   revalidatePath("/backlog");
+  clearReadCache();
   return { ok: true };
 }
 
@@ -306,6 +320,7 @@ export async function deleteTimeEntry(id: string) {
   if (error) return { ok: false, error: error.message };
   revalidatePath("/horas");
   revalidatePath("/");
+  clearReadCache();
   return { ok: true };
 }
 
@@ -315,6 +330,7 @@ export async function deleteContractedHours(id: string) {
   if (error) return { ok: false, error: error.message };
   revalidatePath("/horas");
   revalidatePath("/");
+  clearReadCache();
   return { ok: true };
 }
 
@@ -323,6 +339,7 @@ export async function deleteRequirementNote(id: string, requirementId: string) {
   const { error } = await supabase.from("requirement_notes").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
   revalidatePath(`/tracking/${requirementId}`);
+  clearReadCache();
   return { ok: true };
 }
 
