@@ -1,11 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
-import { PROJECT_ID } from "@/lib/constants";
+import { getProjectId } from "@/lib/project";
 import { ConfigClient, type CatalogRow } from "./config-client";
 
 export const dynamic = "force-dynamic";
 
 export default async function ConfiguracionPage() {
   const supabase = createClient();
+  const PROJECT_ID = await getProjectId();
   const [areas, statuses, priorities, types] = await Promise.all([
     supabase.from("areas").select("id,name,sort_order").eq("project_id", PROJECT_ID).order("sort_order"),
     supabase.from("req_statuses").select("id,name,color,is_final,sort_order").eq("project_id", PROJECT_ID).order("sort_order"),
