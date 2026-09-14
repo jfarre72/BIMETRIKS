@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, Plus, FilePlus2, Loader2 } from "lucide-react";
+import { Clock, Plus, FilePlus2, Loader2, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button, Card, CardBody, CardHeader, CardTitle, Input, Label, Select, Textarea, Badge, EmptyState } from "@/components/ui";
 import { StatCard } from "@/components/ui/stat-card";
 import { Modal } from "@/components/ui/sheet";
 import { formatHours, formatDate, pct } from "@/lib/utils";
-import { addTimeEntry, addContractedHours } from "@/lib/actions";
+import { addTimeEntry, addContractedHours, deleteTimeEntry, deleteContractedHours } from "@/lib/actions";
 import type { ContractedHours, TimeEntry } from "@/lib/types";
 
 type MiniReq = { id: string; code: string; title: string };
@@ -27,8 +27,20 @@ export function HorasClient({
   requirements: MiniReq[];
   sprints: MiniSprint[];
 }) {
+  const router = useRouter();
   const [entryOpen, setEntryOpen] = useState(false);
   const [contractOpen, setContractOpen] = useState(false);
+
+  async function onDeleteEntry(id: string) {
+    if (!confirm("¿Eliminar este registro de horas?")) return;
+    await deleteTimeEntry(id);
+    router.refresh();
+  }
+  async function onDeleteContracted(id: string) {
+    if (!confirm("¿Eliminar este bloque de horas contratadas?")) return;
+    await deleteContractedHours(id);
+    router.refresh();
+  }
 
   return (
     <div>
@@ -64,11 +76,12 @@ export function HorasClient({
                       <th className="py-2 pr-3">Fecha</th>
                       <th className="px-3 py-2">Requerimiento</th>
                       <th className="px-3 py-2 text-right">Horas</th>
+                      <th className="w-8"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {entries.map((e) => (
-                      <tr key={e.id} className="border-b border-line last:border-0">
+                      <tr key={e.id} className="group border-b border-line last:border-0">
                         <td className="whitespace-nowrap py-2.5 pr-3 text-muted">{formatDate(e.entry_date)}</td>
                         <td className="px-3 py-2.5">
                           {e.requirement ? (
@@ -78,6 +91,11 @@ export function HorasClient({
                           )}
                         </td>
                         <td className="px-3 py-2.5 text-right tabular font-medium">{formatHours(e.hours)}</td>
+                        <td className="pr-2 text-right">
+                          <button onClick={() => onDeleteEntry(e.id)} className="rounded p-1 text-muted opacity-0 hover:bg-red-50 hover:text-red-600 group-hover:opacity-100" aria-label="Eliminar">
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -100,14 +118,20 @@ export function HorasClient({
                     <th className="py-2 pr-3">Fecha</th>
                     <th className="px-3 py-2">Observación</th>
                     <th className="px-3 py-2 text-right">Horas</th>
+                    <th className="w-8"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {contracted.map((c) => (
-                    <tr key={c.id} className="border-b border-line last:border-0">
+                    <tr key={c.id} className="group border-b border-line last:border-0">
                       <td className="whitespace-nowrap py-2.5 pr-3 text-muted">{formatDate(c.entry_date)}</td>
                       <td className="px-3 py-2.5">{c.note ?? "—"}</td>
                       <td className="px-3 py-2.5 text-right tabular font-medium text-green-600">+{formatHours(c.hours)}</td>
+                      <td className="pr-2 text-right">
+                        <button onClick={() => onDeleteContracted(c.id)} className="rounded p-1 text-muted opacity-0 hover:bg-red-50 hover:text-red-600 group-hover:opacity-100" aria-label="Eliminar">
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -115,6 +139,7 @@ export function HorasClient({
                   <tr className="border-t-2 border-line font-semibold">
                     <td colSpan={2} className="py-2.5 pr-3 text-right text-muted">Total</td>
                     <td className="px-3 py-2.5 text-right tabular">{formatHours(hours.contracted)}</td>
+                    <td></td>
                   </tr>
                 </tfoot>
               </table>

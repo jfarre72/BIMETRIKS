@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2, MessageSquarePlus } from "lucide-react";
+import { Plus, Loader2, MessageSquarePlus, Trash2 } from "lucide-react";
 import { Button, Input, Select, Textarea, Badge, EmptyState } from "@/components/ui";
-import { addRequirementNote } from "@/lib/actions";
+import { addRequirementNote, deleteRequirementNote } from "@/lib/actions";
 import { formatDate } from "@/lib/utils";
 import type { RequirementNote } from "@/lib/types";
 
@@ -83,6 +83,17 @@ export function Timeline({ requirementId, notes }: { requirementId: string; note
               <div className="flex items-center gap-2">
                 <span className="text-xs font-medium text-muted">{formatDate(n.event_date)}</span>
                 <Badge color={EVENT_COLOR[n.event_type]}>{n.event_type}</Badge>
+                <button
+                  onClick={async () => {
+                    if (!confirm("¿Eliminar esta nota?")) return;
+                    await deleteRequirementNote(n.id, requirementId);
+                    router.refresh();
+                  }}
+                  className="ml-auto rounded p-1 text-muted hover:bg-red-50 hover:text-red-600"
+                  aria-label="Eliminar nota"
+                >
+                  <Trash2 size={13} />
+                </button>
               </div>
               <p className="mt-1 text-sm text-ink">{n.body}</p>
               {n.author && (

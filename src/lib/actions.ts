@@ -225,6 +225,34 @@ export async function addTimeEntry(_prev: ActionResult | null, formData: FormDat
   return { ok: true };
 }
 
+/** Carga rápida de horas (usada al finalizar un requerimiento). */
+export async function quickLogHours(
+  requirementId: string,
+  sprintId: string | null,
+  hours: number,
+  description?: string
+) {
+  if (!hours || hours <= 0) return { ok: false, error: "Ingresá las horas reales" };
+  const supabase = createClient();
+  const uid = await currentProfileId();
+  const { error } = await supabase.from("time_entries").insert({
+    project_id: await getProjectId(),
+    requirement_id: requirementId,
+    sprint_id: sprintId,
+    entry_date: new Date().toISOString().slice(0, 10),
+    hours,
+    description: description ?? "Horas reales al finalizar",
+    created_by: uid,
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/backlog");
+  revalidatePath("/sprints");
+  revalidatePath("/horas");
+  revalidatePath("/");
+  revalidatePath(`/tracking/${requirementId}`);
+  return { ok: true };
+}
+
 export async function addContractedHours(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
   const schema = z.object({
     entry_date: z.string().min(1),
@@ -241,6 +269,60 @@ export async function addContractedHours(_prev: ActionResult | null, formData: F
   if (error) return { ok: false, error: error.message };
   revalidatePath("/horas");
   revalidatePath("/");
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Eliminaciones
+// ---------------------------------------------------------------------------
+export async function deleteRequirement(id: string) {
+  const supabase = createClient();
+  const uid = await currentProfileId();
+  // Soft-delete para preservar historial; se saca de los sprints.
+  await supabase.from("sprint_requirements").delete().eq("requirement_id", id);
+  const { error } = await supabase
+    .from("requirements")
+    .update({ archived_at: new Date().toISOString(), updated_by: uid })
+    .eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/backlog");
+  revalidatePath("/sprints");
+  revalidatePath("/tracking");
+  return { ok: true };
+}
+
+export async function deleteSprint(id: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from("sprints").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/sprints");
+  revalidatePath("/backlog");
+  return { ok: true };
+}
+
+export async function deleteTimeEntry(id: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from("time_entries").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/horas");
+  revalidatePath("/");
+  return { ok: true };
+}
+
+export async function deleteContractedHours(id: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from("contracted_hours").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/horas");
+  revalidatePath("/");
+  return { ok: true };
+}
+
+export async function deleteRequirementNote(id: string, requirementId: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from("requirement_notes").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/tracking/${requirementId}`);
   return { ok: true };
 }
 
