@@ -78,15 +78,53 @@ export async function saveRequirement(_prev: ActionResult | null, formData: Form
   return { ok: true, id: data?.id };
 }
 
+/**
+ * Recalcula el estado de un sprint según sus requerimientos:
+ * sin reqs → Planificado · todos finalizados → Finalizado · caso contrario → Activo.
+ * No pisa un sprint en "Pausado" (control manual).
+ */
+async function syncSprintStatus(supabase: any, sprintId: string) {
+  const { data: sprint } = await supabase.from("sprints").select("status").eq("id", sprintId).single();
+  if (!sprint || sprint.status === "Pausado") return;
+  const { data: links } = await supabase
+    .from("sprint_requirements")
+    .select("requirement:requirements(status:req_statuses(is_final))")
+    .eq("sprint_id", sprintId);
+  const reqs = (links ?? []).map((l: any) => l.requirement).filter(Boolean);
+  let next: string;
+  if (reqs.length === 0) next = "Planificado";
+  else if (reqs.every((r: any) => r.status?.is_final)) next = "Finalizado";
+  else next = "Activo";
+  if (next !== sprint.status) await supabase.from("sprints").update({ status: next }).eq("id", sprintId);
+}
+
 export async function updateRequirementField(id: string, field: "status_id" | "priority_id", value: string) {
   const supabase = createClient();
   const uid = await currentProfileId();
+  const { data: before } = await supabase.from("requirements").select("status_id").eq("id", id).single();
+
   const { error } = await supabase
     .from("requirements")
     .update({ [field]: value, updated_by: uid })
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
+
+  // Cambio de estado: registrar en el timeline y recalcular el estado del sprint.
+  if (field === "status_id" && (before as any)?.status_id !== value) {
+    const { data: st } = await supabase.from("req_statuses").select("name").eq("id", value).single();
+    await supabase.from("requirement_notes").insert({
+      requirement_id: id,
+      event_type: "estado",
+      event_date: new Date().toISOString().slice(0, 10),
+      body: `Estado cambiado a "${(st as any)?.name ?? ""}"`,
+      author_id: uid,
+    });
+    const { data: links } = await supabase.from("sprint_requirements").select("sprint_id").eq("requirement_id", id);
+    for (const l of (links ?? []) as any[]) await syncSprintStatus(supabase, l.sprint_id);
+  }
+
   revalidatePath("/backlog");
+  revalidatePath("/sprints");
   revalidatePath(`/tracking/${id}`);
   clearReadCache();
   return { ok: true };
@@ -174,6 +212,11 @@ export async function moveRequirement(
   const supabase = createClient();
   const uid = await currentProfileId();
 
+  // Sprints afectados (origen + destino) para recalcular su estado luego.
+  const { data: prevLinks } = await supabase.from("sprint_requirements").select("sprint_id").eq("requirement_id", requirementId);
+  const affected = new Set<string>([...(prevLinks ?? []).map((l: any) => l.sprint_id)]);
+  if (targetSprintId) affected.add(targetSprintId);
+
   // 1) Reasignar sprint: sacar de cualquier sprint y, si corresponde, asignar al destino.
   await supabase.from("sprint_requirements").delete().eq("requirement_id", requirementId);
   if (targetSprintId) {
@@ -189,6 +232,9 @@ export async function moveRequirement(
       supabase.from("requirements").update({ sort_index: (i + 1) * 10 }).eq("id", id)
     )
   );
+
+  // 3) Recalcular estado de los sprints afectados.
+  for (const sid of affected) await syncSprintStatus(supabase, sid);
 
   revalidatePath("/backlog");
   revalidatePath("/sprints");
@@ -291,12 +337,14 @@ export async function deleteRequirement(id: string) {
   const supabase = createClient();
   const uid = await currentProfileId();
   // Soft-delete para preservar historial; se saca de los sprints.
+  const { data: prevLinks } = await supabase.from("sprint_requirements").select("sprint_id").eq("requirement_id", id);
   await supabase.from("sprint_requirements").delete().eq("requirement_id", id);
   const { error } = await supabase
     .from("requirements")
     .update({ archived_at: new Date().toISOString(), updated_by: uid })
     .eq("id", id);
   if (error) return { ok: false, error: error.message };
+  for (const l of (prevLinks ?? []) as any[]) await syncSprintStatus(supabase, l.sprint_id);
   revalidatePath("/backlog");
   revalidatePath("/sprints");
   revalidatePath("/tracking");

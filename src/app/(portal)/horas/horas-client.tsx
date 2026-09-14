@@ -61,9 +61,9 @@ export function HorasClient({
         <StatCard label="Horas disponibles" value={formatHours(hours.available)} icon={<Clock size={18} />} accent="#16A34A" />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="flex flex-col gap-4">
         {/* Registros de consumo */}
-        <Card>
+        <Card className="order-2">
           <CardHeader><CardTitle>Registros de horas</CardTitle><Badge>{entries.length}</Badge></CardHeader>
           <CardBody>
             {entries.length === 0 ? (
@@ -106,7 +106,7 @@ export function HorasClient({
         </Card>
 
         {/* Historial de contratación */}
-        <Card>
+        <Card className="order-1">
           <CardHeader><CardTitle>Horas contratadas · historial</CardTitle><Badge>{contracted.length}</Badge></CardHeader>
           <CardBody>
             {contracted.length === 0 ? (
