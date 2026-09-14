@@ -47,7 +47,7 @@ async function _getCatalogs(): Promise<Catalogs> {
     supabase.from("req_priorities").select("id,name,color,weight").eq("project_id", PROJECT_ID).order("weight", { ascending: false }),
     supabase.from("req_types").select("id,name,color").eq("project_id", PROJECT_ID).order("name"),
     supabase.from("profiles").select("id,username,full_name,role").order("full_name"),
-    supabase.from("sprints").select("id,name,status").eq("project_id", PROJECT_ID).order("created_at", { ascending: false }),
+    supabase.from("sprints").select("id,name,status").eq("project_id", PROJECT_ID).is("archived_at", null).order("created_at", { ascending: false }),
   ]);
   return {
     areas: areas.data ?? [],
@@ -106,7 +106,7 @@ export async function getSprints(): Promise<Sprint[]> {
   const supabase = createClient();
   const PROJECT_ID = await getProjectId();
   const [{ data: sprints }, { data: hours }, { data: links }] = await Promise.all([
-    supabase.from("sprints").select("*").eq("project_id", PROJECT_ID).order("created_at", { ascending: false }),
+    supabase.from("sprints").select("*").eq("project_id", PROJECT_ID).is("archived_at", null).order("created_at", { ascending: false }),
     supabase.from("v_sprint_hours").select("sprint_id,estimated_hours,consumed_hours").eq("project_id", PROJECT_ID),
     supabase.from("sprint_requirements").select("sprint_id"),
   ]);
@@ -204,6 +204,75 @@ export async function getHourBlocks(): Promise<HourBlock[]> {
       return { label, contracted, consumed, available: contracted - consumed };
     });
   });
+}
+
+export async function getArchivedSprints(): Promise<Sprint[]> {
+  const supabase = createClient();
+  const PROJECT_ID = await getProjectId();
+  const { data } = await supabase
+    .from("sprints")
+    .select("*")
+    .eq("project_id", PROJECT_ID)
+    .not("archived_at", "is", null)
+    .order("created_at", { ascending: false });
+  return (data as any) ?? [];
+}
+
+export async function getArchivedSprintIds(): Promise<string[]> {
+  const supabase = createClient();
+  const PROJECT_ID = await getProjectId();
+  const { data } = await supabase
+    .from("sprints")
+    .select("id")
+    .eq("project_id", PROJECT_ID)
+    .not("archived_at", "is", null);
+  return (data ?? []).map((s: any) => s.id);
+}
+
+export interface BillingBlock {
+  id: string;
+  label: string;
+  entry_date: string;
+  contracted: number;
+  consumed: number;
+  invoiced: boolean;
+  paid: boolean;
+}
+
+export async function getBillingBlocks(): Promise<BillingBlock[]> {
+  const supabase = createClient();
+  const PROJECT_ID = await getProjectId();
+  const [{ data: blocks }, { data: total }] = await Promise.all([
+    supabase
+      .from("contracted_hours")
+      .select("id,entry_date,hours,note,invoiced,paid")
+      .eq("project_id", PROJECT_ID)
+      .order("entry_date", { ascending: true }),
+    supabase.from("v_project_hours").select("consumed_hours").eq("project_id", PROJECT_ID).single(),
+  ]);
+  let remaining = Number(total?.consumed_hours ?? 0);
+  return (blocks ?? []).map((b: any) => {
+    const d = new Date(b.entry_date);
+    const label = b.note?.trim() || `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+    const contracted = Number(b.hours);
+    const consumed = Math.min(contracted, remaining);
+    remaining -= consumed;
+    return { id: b.id, label, entry_date: b.entry_date, contracted, consumed, invoiced: !!b.invoiced, paid: !!b.paid };
+  });
+}
+
+export async function getProjectDocuments() {
+  const supabase = createClient();
+  const PROJECT_ID = await getProjectId();
+  const { data } = await supabase
+    .from("project_documents")
+    .select("id,path,name,mime,size,created_at")
+    .eq("project_id", PROJECT_ID)
+    .order("created_at", { ascending: false });
+  return (data ?? []).map((d: any) => ({
+    ...d,
+    url: supabase.storage.from("attachments").getPublicUrl(d.path).data.publicUrl,
+  }));
 }
 
 export async function getContractedHours(): Promise<ContractedHours[]> {

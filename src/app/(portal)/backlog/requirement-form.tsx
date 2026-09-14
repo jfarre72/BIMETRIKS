@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload, X } from "lucide-react";
 import { Sheet } from "@/components/ui/sheet";
 import { Button, Input, Label, Select, Textarea } from "@/components/ui";
 import { saveRequirement, type ActionResult } from "@/lib/actions";
+import { createClient } from "@/lib/supabase/client";
 import type { Catalogs, Requirement } from "@/lib/types";
 
 export function RequirementForm({
@@ -20,16 +21,34 @@ export function RequirementForm({
   requirement?: Requirement | null;
 }) {
   const router = useRouter();
+  const supabase = createClient();
   const formRef = useRef<HTMLFormElement>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [dragOver, setDragOver] = useState(false);
 
   useEffect(() => {
     if (open) {
       setError(null);
+      setFiles([]);
       formRef.current?.reset();
     }
   }, [open, requirement]);
+
+  async function uploadFiles(reqId: string) {
+    if (files.length === 0) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    for (const file of files) {
+      const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_") || "archivo";
+      const path = `${reqId}/${Date.now()}-${safe}`;
+      const up = await supabase.storage.from("attachments").upload(path, file);
+      if (up.error) continue;
+      await supabase.from("requirement_attachments").insert({
+        requirement_id: reqId, path, name: file.name, mime: file.type, size: file.size, created_by: user?.id ?? null,
+      });
+    }
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -37,13 +56,23 @@ export function RequirementForm({
     setError(null);
     const fd = new FormData(e.currentTarget);
     const res: ActionResult = await saveRequirement(null, fd);
-    setPending(false);
     if (!res.ok) {
+      setPending(false);
       setError(res.error ?? "No se pudo guardar");
       return;
     }
+    if (res.id) await uploadFiles(res.id);
+    setPending(false);
     onClose();
     router.refresh();
+  }
+
+  function addFiles(list: FileList | File[]) {
+    setFiles((prev) => [...prev, ...Array.from(list)]);
+  }
+  function onPaste(e: React.ClipboardEvent) {
+    const f = Array.from(e.clipboardData.files);
+    if (f.length) { e.preventDefault(); addFiles(f); }
   }
 
   const isEdit = Boolean(requirement?.id);
@@ -117,6 +146,38 @@ export function RequirementForm({
         <div>
           <Label>Observaciones</Label>
           <Textarea name="observations" rows={2} defaultValue={requirement?.observations ?? ""} />
+        </div>
+
+        {/* Adjuntos */}
+        <div>
+          <Label>Imágenes / archivos</Label>
+          <div
+            tabIndex={0}
+            onPaste={onPaste}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
+            className={`flex flex-col items-center gap-1 rounded-xl border border-dashed px-4 py-4 text-center text-sm ${dragOver ? "border-brand bg-brand/5" : "border-line bg-canvas/50"}`}
+          >
+            <Upload size={18} className="text-muted" />
+            <span className="text-muted">
+              Arrastrá, pegá (Ctrl+V) o{" "}
+              <label className="cursor-pointer font-medium text-brand">
+                elegí archivos
+                <input type="file" multiple accept="image/*,.pdf,.xlsx,.csv,.docx" className="hidden" onChange={(e) => e.target.files && addFiles(e.target.files)} />
+              </label>
+            </span>
+          </div>
+          {files.length > 0 && (
+            <ul className="mt-2 space-y-1">
+              {files.map((f, i) => (
+                <li key={i} className="flex items-center justify-between rounded-lg bg-canvas px-2 py-1 text-xs">
+                  <span className="truncate">{f.name}</span>
+                  <button type="button" onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))} className="text-muted hover:text-red-600"><X size={13} /></button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}

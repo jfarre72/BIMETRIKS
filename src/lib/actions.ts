@@ -304,6 +304,28 @@ export async function deleteRequirement(id: string) {
   return { ok: true };
 }
 
+export async function archiveSprint(id: string, archived: boolean) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("sprints")
+    .update({ archived_at: archived ? new Date().toISOString() : null })
+    .eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  clearReadCache();
+  revalidatePath("/sprints");
+  revalidatePath("/backlog");
+  return { ok: true };
+}
+
+export async function toggleContractedFlag(id: string, field: "invoiced" | "paid", value: boolean) {
+  const supabase = createClient();
+  const { error } = await supabase.from("contracted_hours").update({ [field]: value }).eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  clearReadCache();
+  revalidatePath("/facturacion");
+  return { ok: true };
+}
+
 export async function deleteSprint(id: string) {
   const supabase = createClient();
   const { error } = await supabase.from("sprints").delete().eq("id", id);

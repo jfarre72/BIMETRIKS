@@ -88,7 +88,7 @@ export function BacklogClient({
         )}
       </Card>
 
-      <BacklogBoard key={boardKey} requirements={filtered} sprints={sprints} onEdit={openEdit} />
+      <BacklogBoard key={boardKey} requirements={filtered} sprints={sprints} statuses={catalogs.statuses} onEdit={openEdit} />
 
       <RequirementForm open={formOpen} onClose={() => setFormOpen(false)} catalogs={catalogs} requirement={editing} />
     </div>
