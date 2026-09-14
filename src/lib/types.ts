@@ -94,6 +94,16 @@ export interface RequirementNote {
   author?: Profile | null;
 }
 
+export interface Attachment {
+  id: string;
+  requirement_id: string;
+  path: string;
+  name: string | null;
+  mime: string | null;
+  url?: string;
+  created_at: string;
+}
+
 export interface Catalogs {
   areas: Area[];
   statuses: ReqStatus[];

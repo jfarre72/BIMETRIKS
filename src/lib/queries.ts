@@ -84,6 +84,19 @@ export async function getRequirementNotes(reqId: string): Promise<RequirementNot
   return (data as any) ?? [];
 }
 
+export async function getAttachments(reqId: string) {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("requirement_attachments")
+    .select("id,requirement_id,path,name,mime,created_at")
+    .eq("requirement_id", reqId)
+    .order("created_at", { ascending: true });
+  return (data ?? []).map((a: any) => ({
+    ...a,
+    url: supabase.storage.from("attachments").getPublicUrl(a.path).data.publicUrl,
+  }));
+}
+
 export async function getSprints(): Promise<Sprint[]> {
   const supabase = createClient();
   const PROJECT_ID = await getProjectId();

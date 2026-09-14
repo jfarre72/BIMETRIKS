@@ -1,22 +1,18 @@
 import Link from "next/link";
-import { Clock, CheckCircle2, Wrench, ListChecks, Layers, TrendingUp } from "lucide-react";
+import { Clock, TrendingUp, Layers } from "lucide-react";
 import { getDashboard } from "@/lib/queries";
 import { formatHours, pct, formatDateShort } from "@/lib/utils";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardBody, CardHeader, CardTitle, ProgressBar, Badge, EmptyState } from "@/components/ui";
 import { StatCard } from "@/components/ui/stat-card";
 import { HoursGauge } from "@/components/dashboard/hours-gauge";
+import { StatusDonut } from "@/components/dashboard/status-donut";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const { hours, requirements, activeSprint, recentNotes, recentEntries } = await getDashboard();
-
   const byStatus = groupByStatus(requirements);
-  const finalized = requirements.filter((r) => r.status?.is_final).length;
-  const inDev = countStatus(requirements, "En desarrollo");
-  const inVal = countStatus(requirements, "En validación");
-  const pending = requirements.filter((r) => !r.status?.is_final && !["En desarrollo", "En validación"].includes(r.status?.name ?? "")).length;
 
   return (
     <div>
@@ -30,40 +26,12 @@ export default async function DashboardPage() {
         <StatCard label="% utilizado" value={`${pct(hours.consumed, hours.contracted)}%`} icon={<TrendingUp size={18} />} accent="#4FB2F0" />
       </div>
 
-      {/* Consumo + requerimientos por estado */}
+      {/* Consumo de horas + torta de estados (a la derecha) */}
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <HoursGauge contracted={hours.contracted} consumed={hours.consumed} available={hours.available} />
         </div>
-        <Card>
-          <CardHeader>
-            <CardTitle>Requerimientos por estado</CardTitle>
-            <Badge>{requirements.length} total</Badge>
-          </CardHeader>
-          <CardBody className="space-y-3">
-            {byStatus.length === 0 && <p className="text-sm text-muted">Sin requerimientos aún.</p>}
-            {byStatus.map((s) => (
-              <div key={s.name}>
-                <div className="mb-1 flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2 text-ink">
-                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />
-                    {s.name}
-                  </span>
-                  <span className="tabular text-muted">{s.count}</span>
-                </div>
-                <ProgressBar value={pct(s.count, requirements.length)} color={s.color} />
-              </div>
-            ))}
-          </CardBody>
-        </Card>
-      </div>
-
-      {/* Mini KPIs de requerimientos */}
-      <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="Finalizados" value={finalized} icon={<CheckCircle2 size={18} />} accent="#16A34A" />
-        <StatCard label="En desarrollo" value={inDev} icon={<Wrench size={18} />} accent="#1E5EFF" />
-        <StatCard label="En validación" value={inVal} icon={<ListChecks size={18} />} accent="#4FB2F0" />
-        <StatCard label="Pendientes" value={pending} icon={<ListChecks size={18} />} accent="#CA8A04" />
+        <StatusDonut data={byStatus} total={requirements.length} />
       </div>
 
       {/* Sprint activo + últimos movimientos */}
@@ -143,18 +111,14 @@ function RecentActivity({ notes, entries }: { notes: any[]; entries: any[] }) {
 }
 
 function groupByStatus(reqs: any[]) {
-  const map = new Map<string, { name: string; color: string; count: number; order: number }>();
+  const map = new Map<string, { name: string; color: string; value: number; order: number }>();
   reqs.forEach((r) => {
     const name = r.status?.name ?? "Sin estado";
     const color = r.status?.color ?? "#94A3B8";
     const order = r.status?.sort_order ?? 99;
-    const cur = map.get(name) ?? { name, color, count: 0, order };
-    cur.count += 1;
+    const cur = map.get(name) ?? { name, color, value: 0, order };
+    cur.value += 1;
     map.set(name, cur);
   });
   return [...map.values()].sort((a, b) => a.order - b.order);
-}
-
-function countStatus(reqs: any[], name: string) {
-  return reqs.filter((r) => r.status?.name === name).length;
 }

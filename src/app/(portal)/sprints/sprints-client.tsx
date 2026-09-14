@@ -2,9 +2,11 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Plus, Layers, ChevronDown, ChevronRight, Calendar } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, Layers, ChevronDown, ChevronRight, Calendar, Pencil, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button, Card, ProgressBar, EmptyState } from "@/components/ui";
+import { deleteSprint } from "@/lib/actions";
 import { SprintStatusBadge } from "@/components/shared/sprint-status";
 import { PriorityBadge } from "@/components/shared/req-badges";
 import { StatusSelect } from "@/components/shared/status-select";
@@ -21,8 +23,16 @@ export function SprintsClient({
   requirements: Requirement[];
   statuses: Catalogs["statuses"];
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Sprint | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set(sprints[0] ? [sprints[0].id] : []));
+
+  async function onDeleteSprint(s: Sprint) {
+    if (!confirm(`¿Eliminar "${s.name}"? Los requerimientos vuelven a "Sin asignar".`)) return;
+    await deleteSprint(s.id);
+    router.refresh();
+  }
 
   const bySprint = useMemo(() => {
     const map: Record<string, Requirement[]> = {};
@@ -64,9 +74,12 @@ export function SprintsClient({
             return (
               <Card key={s.id} className="overflow-hidden">
                 {/* Cabecera plegable */}
-                <button
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => toggle(s.id)}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-canvas/50"
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") toggle(s.id); }}
+                  className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left hover:bg-canvas/50"
                 >
                   <span className="text-muted">{isOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}</span>
                   <div className="min-w-0 flex-1">
@@ -88,14 +101,21 @@ export function SprintsClient({
                     </div>
                     <ProgressBar value={progress} />
                   </div>
-                  <Link
-                    href={`/sprints/${s.id}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="hidden text-xs font-medium text-brand hover:underline md:block"
-                  >
-                    Ver detalle
-                  </Link>
-                </button>
+                  <span className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Link
+                      href={`/sprints/${s.id}`}
+                      className="hidden text-xs font-medium text-brand hover:underline md:block"
+                    >
+                      Ver detalle
+                    </Link>
+                    <button onClick={() => { setEditing(s); setOpen(true); }} className="rounded-lg p-1.5 text-muted hover:bg-canvas hover:text-ink" aria-label="Editar sprint">
+                      <Pencil size={15} />
+                    </button>
+                    <button onClick={() => onDeleteSprint(s)} className="rounded-lg p-1.5 text-muted hover:bg-red-50 hover:text-red-600" aria-label="Eliminar sprint">
+                      <Trash2 size={15} />
+                    </button>
+                  </span>
+                </div>
 
                 {/* Tabla desplegable */}
                 {isOpen && (
@@ -126,7 +146,7 @@ export function SprintsClient({
                                 <td className="px-2 py-2 font-medium text-ink">{r.title}</td>
                                 <td className="px-2 py-2"><PriorityBadge priority={r.priority} /></td>
                                 <td className="px-2 py-2">
-                                  <StatusSelect requirementId={r.id} value={r.status_id} statuses={statuses} />
+                                  <StatusSelect requirementId={r.id} value={r.status_id} statuses={statuses} sprintId={s.id} />
                                 </td>
                                 <td className="px-2 py-2 text-right tabular text-muted">{formatHours(r.estimated_hours)}</td>
                                 <td className="px-2 py-2 text-right tabular font-medium">{formatHours(r.consumed_hours)}</td>
@@ -144,7 +164,7 @@ export function SprintsClient({
         </div>
       )}
 
-      <SprintForm open={open} onClose={() => setOpen(false)} />
+      <SprintForm open={open} onClose={() => { setOpen(false); setEditing(null); }} sprint={editing} />
     </div>
   );
 }
