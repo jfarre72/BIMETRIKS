@@ -20,12 +20,15 @@ export function StatusStepper({
   statuses,
   sprintId = null,
   estimatedHours = 0,
+  onPatch,
 }: {
   requirementId: string;
   value: string | null;
   statuses: ReqStatus[];
   sprintId?: string | null;
   estimatedHours?: number;
+  /** Actualización optimista del requerimiento en el listado. */
+  onPatch?: (reqId: string, patch: { status_id?: string; estimated_hours?: number }) => void;
 }) {
   const router = useRouter();
   const [current, setCurrent] = useState(value ?? "");
@@ -43,6 +46,7 @@ export function StatusStepper({
   async function go(target: ReqStatus | null) {
     if (!target) return;
     setCurrent(target.id); // instantáneo
+    onPatch?.(requirementId, { status_id: target.id }); // reflejo optimista en el listado
     if (target.is_final) {
       setHours(String(estimatedHours || ""));
       setFinalOpen(true);
@@ -68,6 +72,7 @@ export function StatusStepper({
   async function saveEstimated(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
+    onPatch?.(requirementId, { estimated_hours: Number(estHours) }); // instantáneo en el listado
     await updateEstimatedHours(requirementId, Number(estHours));
     setSaving(false);
     setEstOpen(false);

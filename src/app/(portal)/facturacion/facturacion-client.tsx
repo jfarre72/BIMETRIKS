@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Upload, FileText, Trash2, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardBody, CardHeader, CardTitle, Badge, EmptyState } from "@/components/ui";
 import { StatCard } from "@/components/ui/stat-card";
 import { formatHours, formatDate } from "@/lib/utils";
-import { toggleContractedFlag } from "@/lib/actions";
+import { toggleContractedFlag, setContractedInvoice } from "@/lib/actions";
+import { createClient } from "@/lib/supabase/client";
 import type { BillingBlock } from "@/lib/queries";
 
 export function FacturacionClient({ blocks }: { blocks: BillingBlock[] }) {
@@ -42,6 +44,7 @@ export function FacturacionClient({ blocks }: { blocks: BillingBlock[] }) {
                     <th className="px-3 py-2 text-right">Utilizadas</th>
                     <th className="px-3 py-2 text-center">Facturadas</th>
                     <th className="px-3 py-2 text-center">Pagadas</th>
+                    <th className="px-3 py-2">Factura</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -58,9 +61,12 @@ export function FacturacionClient({ blocks }: { blocks: BillingBlock[] }) {
 
 function Row({ block }: { block: BillingBlock }) {
   const router = useRouter();
+  const supabase = createClient();
   const [invoiced, setInvoiced] = useState(block.invoiced);
   const [paid, setPaid] = useState(block.paid);
+  const [busy, setBusy] = useState(false);
   const [, startTransition] = useTransition();
+  const inputRef = useRef<HTMLInputElement>(null);
 
   function toggle(field: "invoiced" | "paid", value: boolean) {
     if (field === "invoiced") setInvoiced(value);
@@ -69,6 +75,28 @@ function Row({ block }: { block: BillingBlock }) {
       await toggleContractedFlag(block.id, field, value);
       router.refresh();
     });
+  }
+
+  async function uploadInvoice(file: File) {
+    setBusy(true);
+    const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_") || "factura";
+    const path = `invoices/${block.id}/${Date.now()}-${safe}`;
+    const up = await supabase.storage.from("attachments").upload(path, file);
+    if (!up.error) {
+      await setContractedInvoice(block.id, path, file.name);
+      if (!invoiced) { setInvoiced(true); await toggleContractedFlag(block.id, "invoiced", true); }
+    }
+    setBusy(false);
+    router.refresh();
+  }
+
+  async function removeInvoice() {
+    if (!confirm("¿Quitar la factura adjunta?")) return;
+    setBusy(true);
+    if (block.invoicePath) await supabase.storage.from("attachments").remove([block.invoicePath]);
+    await setContractedInvoice(block.id, null, null);
+    setBusy(false);
+    router.refresh();
   }
 
   return (
@@ -82,6 +110,23 @@ function Row({ block }: { block: BillingBlock }) {
       </td>
       <td className="px-3 py-2.5 text-center">
         <input type="checkbox" checked={paid} onChange={(e) => toggle("paid", e.target.checked)} className="h-4 w-4 rounded border-line text-green-600 focus:ring-green-500/30" />
+      </td>
+      <td className="px-3 py-2.5">
+        {busy ? (
+          <Loader2 size={15} className="animate-spin text-muted" />
+        ) : block.invoicePath ? (
+          <div className="flex items-center gap-2">
+            <a href={block.invoiceUrl ?? "#"} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-brand hover:underline">
+              <FileText size={14} /> {block.invoiceName ?? "Factura"}
+            </a>
+            <button onClick={removeInvoice} className="text-muted hover:text-red-600" aria-label="Quitar factura"><Trash2 size={13} /></button>
+          </div>
+        ) : (
+          <button onClick={() => inputRef.current?.click()} className="inline-flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-xs text-muted hover:bg-canvas hover:text-ink">
+            <Upload size={13} /> Adjuntar
+          </button>
+        )}
+        <input ref={inputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => e.target.files?.[0] && uploadInvoice(e.target.files[0])} />
       </td>
     </tr>
   );

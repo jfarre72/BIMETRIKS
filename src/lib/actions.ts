@@ -616,6 +616,15 @@ export async function toggleContractedFlag(id: string, field: "invoiced" | "paid
   return { ok: true };
 }
 
+export async function setContractedInvoice(id: string, path: string | null, name: string | null) {
+  const supabase = createClient();
+  const { error } = await supabase.from("contracted_hours").update({ invoice_path: path, invoice_name: name }).eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  clearReadCache();
+  revalidatePath("/facturacion");
+  return { ok: true };
+}
+
 export async function deleteSprint(id: string) {
   const supabase = createClient();
   const { error } = await supabase.from("sprints").delete().eq("id", id);
