@@ -59,7 +59,7 @@ export function Sidebar({ user, clientName }: { user: { name: string; username: 
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex items-start justify-between px-4 py-6">
+        <div className="flex items-start justify-between px-4 pb-2 pt-5">
           <Logo variant="light" size="xl" className="min-w-0 flex-1" />
           <button onClick={() => setOpen(false)} className="text-white/70 lg:hidden" aria-label="Cerrar menú">
             <X size={20} />

@@ -60,7 +60,10 @@ async function _getCatalogs(): Promise<Catalogs> {
 }
 
 export async function getRequirements(): Promise<Requirement[]> {
-  return cached("requirements", 8000, _getRequirements);
+  // Sin caché: es el dato mutable central del backlog/tracking. Un TTL en
+  // memoria (por instancia) puede devolver datos viejos tras una edición y
+  // obligar a recargar la página. Preferimos leer siempre fresco.
+  return _getRequirements();
 }
 async function _getRequirements(): Promise<Requirement[]> {
   const supabase = createClient();

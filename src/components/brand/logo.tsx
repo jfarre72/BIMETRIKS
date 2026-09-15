@@ -9,11 +9,13 @@ import { cn } from "@/lib/utils";
  * archivo a la carpeta `public/` del repo con el nombre `logo.svg` (preferido,
  * fondo transparente) o `logo.png` (fondo transparente, ~200px de alto).
  */
+// El logo es una franja horizontal (≈5.4:1). Se dimensiona por ANCHO para que
+// llene el espacio sin dejar huecos verticales.
 const SIZE_CLASS: Record<string, string> = {
-  sm: "h-10",
-  md: "h-16",
-  lg: "h-24",
-  xl: "h-40",
+  sm: "w-32",
+  md: "w-40",
+  lg: "w-52",
+  xl: "w-full",
 };
 
 export function Logo({
@@ -44,7 +46,7 @@ export function Logo({
         <img
           src={sources[srcIdx]}
           alt="BiMetriks"
-          className={cn("w-auto max-w-full object-contain", SIZE_CLASS[size])}
+          className={cn("h-auto max-w-full object-contain", SIZE_CLASS[size])}
           onError={() => setSrcIdx((i) => i + 1)}
         />
       )}

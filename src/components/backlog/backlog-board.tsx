@@ -75,6 +75,18 @@ export function BacklogBoard({
     return m;
   }, [groups]);
 
+  // Aplica un cambio a un requerimiento en el estado local (optimista), para
+  // reflejar al instante ediciones como las horas estimadas.
+  function patchReq(reqId: string, patch: Partial<Requirement>) {
+    setGroups((prev) => {
+      const next: Groups = {};
+      for (const g of Object.keys(prev)) {
+        next[g] = prev[g].map((r) => (r.id === reqId ? { ...r, ...patch } : r));
+      }
+      return next;
+    });
+  }
+
   function toggle(gid: string) {
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -169,6 +181,7 @@ export function BacklogBoard({
               onEdit={onEdit}
               onDelete={onDelete}
               onOpen={(id) => router.push(`/tracking/${id}`)}
+              onPatch={patchReq}
               sprintHref={isUnassigned ? undefined : `/sprints/${gid}`}
             />
           );
@@ -198,6 +211,7 @@ function GroupTable({
   onEdit,
   onDelete,
   onOpen,
+  onPatch,
   sprintHref,
 }: {
   groupId: string;
@@ -211,6 +225,7 @@ function GroupTable({
   onEdit: (r: Requirement) => void;
   onDelete: (r: Requirement) => void;
   onOpen: (id: string) => void;
+  onPatch: (reqId: string, patch: Partial<Requirement>) => void;
   sprintHref?: string;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: groupId });
@@ -257,7 +272,7 @@ function GroupTable({
                     <tr><td colSpan={9} className="px-4 py-6 text-center text-sm text-muted">Arrastrá requerimientos hasta acá.</td></tr>
                   ) : (
                     rows.map((r, i) => (
-                      <Row key={r.id} req={r} index={i + 1} statuses={statuses} onEdit={onEdit} onDelete={onDelete} onOpen={onOpen} />
+                      <Row key={r.id} req={r} index={i + 1} statuses={statuses} onEdit={onEdit} onDelete={onDelete} onOpen={onOpen} onPatch={onPatch} />
                     ))
                   )}
                 </tbody>
@@ -291,6 +306,7 @@ function Row({
   onEdit,
   onDelete,
   onOpen,
+  onPatch,
 }: {
   req: Requirement;
   index: number;
@@ -298,6 +314,7 @@ function Row({
   onEdit: (r: Requirement) => void;
   onDelete: (r: Requirement) => void;
   onOpen: (id: string) => void;
+  onPatch: (reqId: string, patch: Partial<Requirement>) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: req.id });
   const style: React.CSSProperties = {
@@ -325,7 +342,7 @@ function Row({
       <td className="whitespace-nowrap px-2 py-2 text-muted">{req.area?.name ?? "—"}</td>
       <td className="px-2 py-2"><PriorityBadge priority={req.priority} /></td>
       <td className="px-2 py-2">
-        <StatusStepper requirementId={req.id} value={req.status_id} statuses={statuses} sprintId={req.sprint?.id ?? null} estimatedHours={Number(req.estimated_hours ?? 0)} />
+        <StatusStepper requirementId={req.id} value={req.status_id} statuses={statuses} sprintId={req.sprint?.id ?? null} estimatedHours={Number(req.estimated_hours ?? 0)} onPatch={onPatch} />
       </td>
       <td className="px-2 py-2 text-right tabular text-muted">{formatHours(req.estimated_hours)}</td>
       <td className="px-2 py-2 text-right tabular font-medium">{formatHours(req.consumed_hours)}</td>
