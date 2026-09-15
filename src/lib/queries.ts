@@ -274,6 +274,9 @@ export interface BillingBlock {
   consumed: number;
   invoiced: boolean;
   paid: boolean;
+  invoicePath: string | null;
+  invoiceName: string | null;
+  invoiceUrl: string | null;
 }
 
 export async function getBillingBlocks(): Promise<BillingBlock[]> {
@@ -285,7 +288,7 @@ async function _getBillingBlocks(): Promise<BillingBlock[]> {
   const [{ data: blocks }, { data: total }] = await Promise.all([
     supabase
       .from("contracted_hours")
-      .select("id,entry_date,hours,note,invoiced,paid")
+      .select("id,entry_date,hours,note,invoiced,paid,invoice_path,invoice_name")
       .eq("project_id", PROJECT_ID)
       .order("entry_date", { ascending: true }),
     supabase.from("v_project_hours").select("consumed_hours").eq("project_id", PROJECT_ID).single(),
@@ -297,7 +300,12 @@ async function _getBillingBlocks(): Promise<BillingBlock[]> {
     const contracted = Number(b.hours);
     const consumed = Math.min(contracted, remaining);
     remaining -= consumed;
-    return { id: b.id, label, entry_date: b.entry_date, contracted, consumed, invoiced: !!b.invoiced, paid: !!b.paid };
+    const invoiceUrl = b.invoice_path ? supabase.storage.from("attachments").getPublicUrl(b.invoice_path).data.publicUrl : null;
+    return {
+      id: b.id, label, entry_date: b.entry_date, contracted, consumed,
+      invoiced: !!b.invoiced, paid: !!b.paid,
+      invoicePath: b.invoice_path ?? null, invoiceName: b.invoice_name ?? null, invoiceUrl,
+    };
   });
 }
 

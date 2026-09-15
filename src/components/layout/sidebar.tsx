@@ -45,7 +45,7 @@ export function Sidebar({ user, clientName }: { user: { name: string; username: 
     <>
       {/* Topbar mobile */}
       <div className="flex items-center justify-between border-b border-navy-800 bg-navy-900 px-4 py-3 lg:hidden">
-        <Logo variant="light" showTagline={false} size="md" />
+        <Logo variant="light" showTagline={false} />
         <button onClick={() => setOpen(true)} className="text-white/80" aria-label="Abrir menú">
           <Menu size={22} />
         </button>
@@ -59,28 +59,28 @@ export function Sidebar({ user, clientName }: { user: { name: string; username: 
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex items-start justify-between px-4 py-6">
-          <Logo variant="light" size="xl" className="min-w-0 flex-1" />
+        <div className="flex items-start justify-between px-4 pb-3 pt-5">
+          <Logo variant="light" className="min-w-0 flex-1" />
           <button onClick={() => setOpen(false)} className="text-white/70 lg:hidden" aria-label="Cerrar menú">
             <X size={20} />
           </button>
         </div>
 
         {clientName && (
-          <div className="mx-3 mb-3 rounded-xl border border-navy-800 bg-white/5 px-3 py-2">
-            <p className="text-[10px] uppercase tracking-wider text-white/40">Cliente</p>
-            <p className="truncate text-sm font-semibold text-white">{clientName}</p>
+          <div className="mx-3 mb-2 flex items-baseline gap-2 rounded-lg border border-navy-800 bg-white/5 px-3 py-1.5">
+            <span className="text-[10px] uppercase tracking-wider text-white/40">Cliente</span>
+            <span className="truncate text-sm font-semibold text-white">{clientName}</span>
           </div>
         )}
 
-        <nav className="flex-1 space-y-1 px-3">
+        <nav className="flex-1 space-y-0.5 px-3 pt-1">
           {NAV.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
               onClick={() => setOpen(false)}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 isActive(href)
                   ? "bg-brand/15 text-white"
                   : "text-white/60 hover:bg-white/5 hover:text-white"
