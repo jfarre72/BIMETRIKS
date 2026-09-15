@@ -35,13 +35,15 @@ export function StatusSelect({
   const [saving, setSaving] = useState(false);
   const color = statuses.find((s) => s.id === current)?.color ?? "#64748B";
 
-  function onChange(e: React.ChangeEvent<HTMLSelectElement>) {
+  async function onChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const nextId = e.target.value;
     const target = statuses.find((s) => s.id === nextId);
     setCurrent(nextId); // instantáneo
-    void updateRequirementField(requirementId, "status_id", nextId); // en segundo plano
     if (target?.is_final) { setHours(String(estimatedHours || "")); setFinalOpen(true); }
     else if (isEstimado(target) && !(estimatedHours > 0)) { setEstHours(""); setEstOpen(true); }
+    // Persistimos y refrescamos para reflejar el recálculo del estado del sprint.
+    await updateRequirementField(requirementId, "status_id", nextId);
+    router.refresh();
   }
 
   async function saveHours(e: React.FormEvent) {

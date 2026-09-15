@@ -35,7 +35,7 @@ export function Logo({
         <img
           src={sources[srcIdx]}
           alt="BiMetriks"
-          className="h-14 w-auto object-contain"
+          className="h-20 w-auto object-contain"
           onError={() => setSrcIdx((i) => i + 1)}
         />
       )}

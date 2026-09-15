@@ -40,10 +40,9 @@ export function StatusStepper({
   const prev = idx > 0 ? statuses[idx - 1] : null;
   const next = idx >= 0 && idx < statuses.length - 1 ? statuses[idx + 1] : null;
 
-  function go(target: ReqStatus | null) {
+  async function go(target: ReqStatus | null) {
     if (!target) return;
     setCurrent(target.id); // instantáneo
-    void updateRequirementField(requirementId, "status_id", target.id); // en segundo plano
     if (target.is_final) {
       setHours(String(estimatedHours || ""));
       setFinalOpen(true);
@@ -52,6 +51,9 @@ export function StatusStepper({
       setEstHours("");
       setEstOpen(true);
     }
+    // Persistimos y refrescamos para reflejar el recálculo del estado del sprint.
+    await updateRequirementField(requirementId, "status_id", target.id);
+    router.refresh();
   }
 
   async function saveHours(e: React.FormEvent) {

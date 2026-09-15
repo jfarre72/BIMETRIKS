@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -50,6 +50,13 @@ export function BacklogBoard({
   const sprintById = useMemo(() => Object.fromEntries(sprints.map((s) => [s.id, s])), [sprints]);
   const [groups, setGroups] = useState<Groups>(() => buildGroups(requirements, groupOrder));
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  // Resincroniza con los datos del servidor cuando cambian (p. ej. tras
+  // actualizar estado u horas), sin remontar el board: así se reflejan al
+  // instante y se conservan los grupos expandidos.
+  useEffect(() => {
+    setGroups(buildGroups(requirements, groupOrder));
+  }, [requirements, groupOrder]);
 
   // Abrir por defecto: último sprint activo + "Sin asignar". Resto plegado.
   const [expanded, setExpanded] = useState<Set<string>>(() => {
