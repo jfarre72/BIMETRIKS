@@ -19,7 +19,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardBody, CardHeader, CardTitle, EmptyState } from "@/components/ui";
 import { StatCard } from "@/components/ui/stat-card";
 import { HourBlocksChart } from "@/components/dashboard/hour-blocks-chart";
-import { ReportPdf, type ReportReq } from "./report-pdf";
+import { ReportPdf, type ReportReq, type SprintReport } from "./report-pdf";
 import { formatHours, formatDateShort } from "@/lib/utils";
 import type { HourBlock } from "@/lib/queries";
 
@@ -28,23 +28,21 @@ const AXIS = { fontSize: 12, fill: "#64748B" };
 export function ReporteriaClient({
   hours,
   byStatus,
-  byArea,
   evolution,
-  bySprint,
   blocks,
   totals,
   clientName,
   reportReqs,
+  sprintReport,
 }: {
   hours: { contracted: number; consumed: number; available: number };
   byStatus: { name: string; color: string; value: number }[];
-  byArea: { name: string; value: number }[];
   evolution: { date: string; acumulado: number }[];
-  bySprint: { name: string; estimadas: number; consumidas: number }[];
   blocks: HourBlock[];
   totals: { total: number; finalized: number; pending: number };
   clientName: string;
   reportReqs: ReportReq[];
+  sprintReport: SprintReport[];
 }) {
   const contractedVsConsumed = [
     { name: "Contratadas", horas: hours.contracted },
@@ -56,7 +54,7 @@ export function ReporteriaClient({
     <div>
       <PageHeader title="Reportería" subtitle="Reportes ejecutivos del servicio" />
 
-      <ReportPdf clientName={clientName} requirements={reportReqs} hours={hours} />
+      <ReportPdf clientName={clientName} requirements={reportReqs} hours={hours} sprintReport={sprintReport} />
 
       <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Requerimientos" value={totals.total} accent="#0B1E3F" />
@@ -108,24 +106,6 @@ export function ReporteriaClient({
           )}
         </ChartCard>
 
-        <ChartCard title="Horas por Sprint (estimadas vs reales)">
-          {bySprint.length === 0 ? (
-            <EmptyState title="Sin sprints" />
-          ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={bySprint} barGap={4}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#EEF2F7" />
-                <XAxis dataKey="name" tick={AXIS} axisLine={false} tickLine={false} />
-                <YAxis tick={AXIS} axisLine={false} tickLine={false} />
-                <Tooltip cursor={{ fill: "#F7F9FC" }} />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="estimadas" name="Estimadas" fill="#4FB2F0" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="consumidas" name="Utilizadas" fill="#1E5EFF" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </ChartCard>
-
         <ChartCard title="Requerimientos por estado">
           {byStatus.length === 0 ? (
             <EmptyState title="Sin requerimientos" />
@@ -138,22 +118,6 @@ export function ReporteriaClient({
                 <Tooltip />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
               </PieChart>
-            </ResponsiveContainer>
-          )}
-        </ChartCard>
-
-        <ChartCard title="Requerimientos por área" className="lg:col-span-2">
-          {byArea.length === 0 ? (
-            <EmptyState title="Sin datos" />
-          ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={byArea} layout="vertical" barSize={22}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#EEF2F7" />
-                <XAxis type="number" tick={AXIS} axisLine={false} tickLine={false} allowDecimals={false} />
-                <YAxis type="category" dataKey="name" width={140} tick={AXIS} axisLine={false} tickLine={false} />
-                <Tooltip cursor={{ fill: "#F7F9FC" }} />
-                <Bar dataKey="value" fill="#1E5EFF" radius={[0, 6, 6, 0]} />
-              </BarChart>
             </ResponsiveContainer>
           )}
         </ChartCard>

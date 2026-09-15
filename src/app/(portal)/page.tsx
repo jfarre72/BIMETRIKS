@@ -1,4 +1,4 @@
-import { Clock, TrendingUp } from "lucide-react";
+import { Clock, TrendingUp, ListChecks, Layers, Inbox } from "lucide-react";
 import { getDashboard } from "@/lib/queries";
 import { formatHours, pct } from "@/lib/utils";
 import { PageHeader } from "@/components/layout/page-header";
@@ -13,6 +13,10 @@ export default async function DashboardPage() {
   const { hours, requirements, blocks } = await getDashboard();
   const byStatus = groupByStatus(requirements);
 
+  const totalReqs = requirements.length;
+  const assignedReqs = requirements.filter((r) => r.sprint?.id).length;
+  const unassignedReqs = totalReqs - assignedReqs;
+
   return (
     <div>
       <PageHeader title="Inicio" subtitle="Estado general del servicio" />
@@ -23,6 +27,13 @@ export default async function DashboardPage() {
         <StatCard label="Horas utilizadas" value={formatHours(hours.consumed)} icon={<TrendingUp size={18} />} accent="#1E5EFF" />
         <StatCard label="Horas disponibles" value={formatHours(hours.available)} icon={<Clock size={18} />} accent="#16A34A" />
         <StatCard label="% utilizado" value={`${pct(hours.consumed, hours.contracted)}%`} icon={<TrendingUp size={18} />} accent="#4E9A2E" />
+      </div>
+
+      {/* Indicadores de requerimientos */}
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard label="Requerimientos totales" value={totalReqs} icon={<ListChecks size={18} />} accent="#0B1E3F" />
+        <StatCard label="Asignados a sprint" value={assignedReqs} hint={`${pct(assignedReqs, totalReqs)}% del total`} icon={<Layers size={18} />} accent="#1E5EFF" />
+        <StatCard label="Pendientes de asignar" value={unassignedReqs} hint={`${pct(unassignedReqs, totalReqs)}% del total`} icon={<Inbox size={18} />} accent="#CA8A04" />
       </div>
 
       {/* Torta de utilización + torta de estados */}

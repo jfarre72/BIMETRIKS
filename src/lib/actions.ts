@@ -35,7 +35,7 @@ const requirementSchema = z.object({
   sprint_id: z.preprocess(emptyToNull, z.string().uuid().nullable()).optional(),
 });
 
-export type ActionResult = { ok: boolean; error?: string; id?: string };
+export type ActionResult = { ok: boolean; error?: string; id?: string; code?: string };
 
 // Inserta una entrada en el historial/timeline del requerimiento.
 async function logReqNote(
@@ -132,10 +132,88 @@ async function setRequirementSprint(
     affected.add(nextSprintId);
     const { data: sp } = await supabase.from("sprints").select("name").eq("id", nextSprintId).single();
     await logReqNote(supabase, requirementId, "sprint", `Asignado al sprint "${(sp as any)?.name ?? ""}"`, authorId);
+    await maybePrioritizeOnSprint(supabase, requirementId, authorId);
   } else {
     await logReqNote(supabase, requirementId, "sprint", "Quitado del sprint", authorId);
   }
   return affected;
+}
+
+// Normaliza un nombre de estado: sin acentos, minúsculas, sin espacios extra.
+function norm(s: string): string {
+  return (s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+}
+
+type StatusRow = { id: string; name: string; sort_order: number; is_final: boolean };
+
+// Estados del proyecto, ordenados por su posición en el flujo.
+async function getProjectStatuses(supabase: any): Promise<StatusRow[]> {
+  const projectId = await getProjectId();
+  const { data } = await supabase
+    .from("req_statuses")
+    .select("id,name,sort_order,is_final")
+    .eq("project_id", projectId)
+    .order("sort_order");
+  return (data ?? []) as StatusRow[];
+}
+
+/**
+ * Cambia el estado de un requerimiento y lo registra en el historial. Si el
+ * salto omite estados intermedios (p. ej. de "En relevamiento" a "En
+ * desarrollo"), deja constancia de que pasó por todos los estados previos.
+ * `reason` reemplaza el texto por defecto de la nota principal.
+ */
+async function changeStatus(
+  supabase: any,
+  requirementId: string,
+  newStatusId: string,
+  authorId: string | null,
+  reason?: string
+): Promise<void> {
+  const { data: before } = await supabase.from("requirements").select("status_id").eq("id", requirementId).single();
+  const oldId = (before as any)?.status_id ?? null;
+  if (oldId === newStatusId) return;
+
+  const { error } = await supabase
+    .from("requirements")
+    .update({ status_id: newStatusId, updated_by: authorId })
+    .eq("id", requirementId);
+  if (error) return;
+
+  const statuses = await getProjectStatuses(supabase);
+  const oldS = statuses.find((s) => s.id === oldId);
+  const newS = statuses.find((s) => s.id === newStatusId);
+
+  // Salto hacia adelante: registrar los estados intermedios que se dan por cumplidos.
+  if (oldS && newS && newS.sort_order > oldS.sort_order + 1) {
+    const skipped = statuses.filter(
+      (s) => s.sort_order > oldS.sort_order && s.sort_order < newS.sort_order && !s.is_final
+    );
+    if (skipped.length) {
+      await logReqNote(
+        supabase,
+        requirementId,
+        "estado",
+        `Avance directo: se dan por cumplidos ${skipped.map((s) => s.name).join(", ")}`,
+        authorId
+      );
+    }
+  }
+
+  await logReqNote(supabase, requirementId, "estado", reason ?? `Estado cambiado a "${newS?.name ?? ""}"`, authorId);
+
+  const { data: links } = await supabase.from("sprint_requirements").select("sprint_id").eq("requirement_id", requirementId);
+  for (const l of (links ?? []) as any[]) await syncSprintStatus(supabase, l.sprint_id);
+}
+
+/** Al asignar a un sprint, un requerimiento en "Nuevo" pasa a "Priorizado". */
+async function maybePrioritizeOnSprint(supabase: any, requirementId: string, authorId: string | null): Promise<void> {
+  const { data: r } = await supabase.from("requirements").select("status_id").eq("id", requirementId).single();
+  const statuses = await getProjectStatuses(supabase);
+  const cur = statuses.find((s) => s.id === (r as any)?.status_id);
+  const priorizado = statuses.find((s) => norm(s.name) === "priorizado");
+  if (!priorizado || !cur || norm(cur.name) !== "nuevo") return;
+  await changeStatus(supabase, requirementId, priorizado.id, authorId, "Priorizado automáticamente al asignar a un sprint");
 }
 
 export async function saveRequirement(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
@@ -164,6 +242,17 @@ export async function saveRequirement(_prev: ActionResult | null, formData: Form
 
     await logRequirementChanges(supabase, id, (before as any) ?? {}, values, uid);
 
+    // Al cargar horas estimadas, el requerimiento pasa a "Estimado"
+    // (si su estado actual es anterior a Estimado en el flujo).
+    if (Number(values.estimated_hours) > 0) {
+      const statuses = await getProjectStatuses(supabase);
+      const estimado = statuses.find((s) => norm(s.name) === "estimado");
+      const cur = statuses.find((s) => s.id === values.status_id);
+      if (estimado && cur && cur.sort_order < estimado.sort_order) {
+        await changeStatus(supabase, id, estimado.id, uid, `Estimado automáticamente (${values.estimated_hours} h)`);
+      }
+    }
+
     // Reasignación de sprint (queda registrada) y recálculo de su estado.
     if (sprintProvided) {
       const affected = await setRequirementSprint(supabase, id, sprint_id ?? null, uid);
@@ -190,7 +279,7 @@ export async function saveRequirement(_prev: ActionResult | null, formData: Form
   const { data, error } = await supabase
     .from("requirements")
     .insert({ ...values, project_id: projectId, sort_index: nextIndex, created_by: uid, updated_by: uid })
-    .select("id")
+    .select("id,code")
     .single();
   if (error) return { ok: false, error: error.message };
   if (data?.id && sprint_id) {
@@ -200,7 +289,7 @@ export async function saveRequirement(_prev: ActionResult | null, formData: Form
   }
   revalidatePath("/backlog");
   clearReadCache();
-  return { ok: true, id: data?.id };
+  return { ok: true, id: data?.id, code: (data as any)?.code };
 }
 
 /**
@@ -226,31 +315,40 @@ async function syncSprintStatus(supabase: any, sprintId: string) {
 export async function updateRequirementField(id: string, field: "status_id" | "priority_id", value: string) {
   const supabase = createClient();
   const uid = await currentProfileId();
-  const { data: before } = await supabase.from("requirements").select("status_id").eq("id", id).single();
 
-  const { error } = await supabase
-    .from("requirements")
-    .update({ [field]: value, updated_by: uid })
-    .eq("id", id);
-  if (error) return { ok: false, error: error.message };
-
-  // Cambio de estado: registrar en el timeline y recalcular el estado del sprint.
-  if (field === "status_id" && (before as any)?.status_id !== value) {
-    const { data: st } = await supabase.from("req_statuses").select("name").eq("id", value).single();
-    await supabase.from("requirement_notes").insert({
-      requirement_id: id,
-      event_type: "estado",
-      event_date: new Date().toISOString().slice(0, 10),
-      body: `Estado cambiado a "${(st as any)?.name ?? ""}"`,
-      author_id: uid,
-    });
-    const { data: links } = await supabase.from("sprint_requirements").select("sprint_id").eq("requirement_id", id);
-    for (const l of (links ?? []) as any[]) await syncSprintStatus(supabase, l.sprint_id);
+  if (field === "status_id") {
+    // changeStatus actualiza, registra el cambio (y los estados omitidos) y
+    // recalcula el estado del sprint.
+    await changeStatus(supabase, id, value, uid);
+  } else {
+    const { error } = await supabase
+      .from("requirements")
+      .update({ [field]: value, updated_by: uid })
+      .eq("id", id);
+    if (error) return { ok: false, error: error.message };
   }
 
   revalidatePath("/backlog");
   revalidatePath("/sprints");
   revalidatePath(`/tracking/${id}`);
+  clearReadCache();
+  return { ok: true };
+}
+
+/** Carga/actualiza las horas estimadas de un requerimiento (queda registrado). */
+export async function updateEstimatedHours(requirementId: string, hours: number) {
+  if (hours == null || hours < 0) return { ok: false, error: "Ingresá las horas estimadas" };
+  const supabase = createClient();
+  const uid = await currentProfileId();
+  const { error } = await supabase
+    .from("requirements")
+    .update({ estimated_hours: hours, updated_by: uid })
+    .eq("id", requirementId);
+  if (error) return { ok: false, error: error.message };
+  await logReqNote(supabase, requirementId, "estado", `Horas estimadas: ${hours} h`, uid);
+  revalidatePath("/backlog");
+  revalidatePath("/sprints");
+  revalidatePath(`/tracking/${requirementId}`);
   clearReadCache();
   return { ok: true };
 }
@@ -320,6 +418,7 @@ export async function assignToSprint(sprintId: string, requirementIds: string[])
   const { data: sp } = await supabase.from("sprints").select("name").eq("id", sprintId).single();
   for (const requirement_id of requirementIds) {
     await logReqNote(supabase, requirement_id, "sprint", `Asignado al sprint "${(sp as any)?.name ?? ""}"`, uid);
+    await maybePrioritizeOnSprint(supabase, requirement_id, uid);
   }
   revalidatePath("/backlog");
   revalidatePath("/sprints");
@@ -361,6 +460,7 @@ export async function moveRequirement(
     if (targetSprintId) {
       const { data: sp } = await supabase.from("sprints").select("name").eq("id", targetSprintId).single();
       await logReqNote(supabase, requirementId, "sprint", `Asignado al sprint "${(sp as any)?.name ?? ""}"`, uid);
+      await maybePrioritizeOnSprint(supabase, requirementId, uid);
     } else {
       await logReqNote(supabase, requirementId, "sprint", "Quitado del sprint", uid);
     }

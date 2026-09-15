@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Search, X } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button, Card, Input, Select } from "@/components/ui";
@@ -19,6 +19,10 @@ export function BacklogClient({
 }) {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Requirement | null>(null);
+  // Copia local para reflejar altas/ediciones al instante; se resincroniza
+  // con el servidor cuando llega el refresh.
+  const [localReqs, setLocalReqs] = useState<Requirement[]>(requirements);
+  useEffect(() => setLocalReqs(requirements), [requirements]);
   const [q, setQ] = useState("");
   const [area, setArea] = useState("");
   const [status, setStatus] = useState("");
@@ -28,7 +32,7 @@ export function BacklogClient({
   const hasFilters = q || area || status || priority || type;
 
   const filtered = useMemo(() => {
-    return requirements.filter((r) => {
+    return localReqs.filter((r) => {
       if (q && !`${r.code} ${r.title}`.toLowerCase().includes(q.toLowerCase())) return false;
       if (area && r.area_id !== area) return false;
       if (status && r.status_id !== status) return false;
@@ -36,7 +40,7 @@ export function BacklogClient({
       if (type && r.type_id !== type) return false;
       return true;
     });
-  }, [requirements, q, area, status, priority, type]);
+  }, [localReqs, q, area, status, priority, type]);
 
   // Remonta el board cuando cambian filtros o datos del servidor.
   const boardKey = useMemo(
@@ -46,6 +50,10 @@ export function BacklogClient({
 
   function openNew() { setEditing(null); setFormOpen(true); }
   function openEdit(req: Requirement) { setEditing(req); setFormOpen(true); }
+
+  function onSaved(req: Requirement, isEdit: boolean) {
+    setLocalReqs((prev) => (isEdit ? prev.map((r) => (r.id === req.id ? req : r)) : [req, ...prev]));
+  }
 
   return (
     <div>
@@ -90,7 +98,7 @@ export function BacklogClient({
 
       <BacklogBoard key={boardKey} requirements={filtered} sprints={sprints} statuses={catalogs.statuses} onEdit={openEdit} />
 
-      <RequirementForm open={formOpen} onClose={() => setFormOpen(false)} catalogs={catalogs} requirement={editing} />
+      <RequirementForm open={formOpen} onClose={() => setFormOpen(false)} catalogs={catalogs} requirement={editing} onSaved={onSaved} />
     </div>
   );
 }

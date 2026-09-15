@@ -64,17 +64,19 @@ export function Modal({
   onClose,
   title,
   children,
+  width = "max-w-md",
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  width?: string;
 }) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-navy-950/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl bg-surface p-6 shadow-float">
+      <div className={cn("relative max-h-[92vh] w-full overflow-y-auto rounded-2xl bg-surface p-6 shadow-float", width)}>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-semibold text-ink">{title}</h2>
           <button onClick={onClose} className="rounded-lg p-1.5 text-muted hover:bg-canvas" aria-label="Cerrar">

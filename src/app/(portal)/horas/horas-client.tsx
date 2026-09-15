@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, Plus, FilePlus2, Loader2, Trash2, Pencil } from "lucide-react";
+import { Clock, Plus, FilePlus2, Loader2, Trash2, Pencil, FileSpreadsheet } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button, Card, CardBody, CardHeader, CardTitle, Input, Label, Select, Textarea, Badge, EmptyState } from "@/components/ui";
 import { StatCard } from "@/components/ui/stat-card";
 import { Modal } from "@/components/ui/sheet";
 import { formatHours, formatDate, pct } from "@/lib/utils";
+import { exportToExcel } from "@/lib/export";
 import { addTimeEntry, addContractedHours, deleteTimeEntry, deleteContractedHours, updateContractedHours } from "@/lib/actions";
 import type { ContractedHours, TimeEntry } from "@/lib/types";
 
@@ -43,6 +44,28 @@ export function HorasClient({
     router.refresh();
   }
 
+  function exportEntries() {
+    exportToExcel(
+      `registros-horas-${new Date().toISOString().slice(0, 10)}`,
+      ["Fecha", "Requerimiento", "Descripción", "Sprint", "Horas"],
+      entries.map((e) => [
+        formatDate(e.entry_date),
+        e.requirement ? `${e.requirement.code} · ${e.requirement.title}` : "—",
+        e.description ?? "",
+        e.sprint?.name ?? "—",
+        e.hours,
+      ])
+    );
+  }
+
+  function exportContracted() {
+    exportToExcel(
+      `horas-contratadas-${new Date().toISOString().slice(0, 10)}`,
+      ["Fecha", "Observación", "Horas"],
+      contracted.map((c) => [formatDate(c.entry_date), c.note ?? "", c.hours])
+    );
+  }
+
   return (
     <div>
       <PageHeader
@@ -65,7 +88,12 @@ export function HorasClient({
       <div className="flex flex-col gap-4">
         {/* Registros de consumo */}
         <Card className="order-2">
-          <CardHeader><CardTitle>Registros de horas</CardTitle><Badge>{entries.length}</Badge></CardHeader>
+          <CardHeader>
+            <div className="flex items-center gap-2"><CardTitle>Registros de horas</CardTitle><Badge>{entries.length}</Badge></div>
+            {entries.length > 0 && (
+              <Button size="sm" variant="secondary" onClick={exportEntries}><FileSpreadsheet size={15} /> Excel</Button>
+            )}
+          </CardHeader>
           <CardBody>
             {entries.length === 0 ? (
               <EmptyState title="Sin registros" description="Registrá el primer bloque de horas." />
@@ -108,7 +136,12 @@ export function HorasClient({
 
         {/* Historial de contratación */}
         <Card className="order-1">
-          <CardHeader><CardTitle>Horas contratadas · historial</CardTitle><Badge>{contracted.length}</Badge></CardHeader>
+          <CardHeader>
+            <div className="flex items-center gap-2"><CardTitle>Horas contratadas · historial</CardTitle><Badge>{contracted.length}</Badge></div>
+            {contracted.length > 0 && (
+              <Button size="sm" variant="secondary" onClick={exportContracted}><FileSpreadsheet size={15} /> Excel</Button>
+            )}
+          </CardHeader>
           <CardBody>
             {contracted.length === 0 ? (
               <EmptyState title="Sin contratación" description="Registrá el primer bloque de horas contratadas." />

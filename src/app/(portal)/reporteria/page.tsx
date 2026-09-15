@@ -1,6 +1,6 @@
 import { getProjectHours, getRequirements, getSprints, getTimeEntries, getHourBlocks, getClientName } from "@/lib/queries";
 import { ReporteriaClient } from "./reporteria-client";
-import type { ReportReq } from "./report-pdf";
+import type { ReportReq, SprintReport } from "./report-pdf";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +26,28 @@ export default async function ReporteriaPage() {
     updatedAt: r.updated_at,
   }));
 
+  // Detalle por sprint: cada sprint con sus requerimientos y estados.
+  const bySprintGroups = new Map<string, SprintReport>();
+  sprints.forEach((s) =>
+    bySprintGroups.set(s.id, { name: s.name, status: s.status, estimated: 0, consumed: 0, requirements: [] })
+  );
+  const unassigned: SprintReport = { name: "Sin asignar", status: null, estimated: 0, consumed: 0, requirements: [] };
+  requirements.forEach((r) => {
+    const group = (r.sprint?.id && bySprintGroups.get(r.sprint.id)) || unassigned;
+    group.requirements.push({
+      code: r.code,
+      title: r.title,
+      status: r.status?.name ?? "Sin estado",
+      statusColor: r.status?.color ?? "#94A3B8",
+      estimated: Number(r.estimated_hours ?? 0),
+      consumed: Number(r.consumed_hours ?? 0),
+    });
+    group.estimated += Number(r.estimated_hours ?? 0);
+    group.consumed += Number(r.consumed_hours ?? 0);
+  });
+  const sprintReport: SprintReport[] = [...bySprintGroups.values()].filter((g) => g.requirements.length > 0);
+  if (unassigned.requirements.length > 0) sprintReport.push(unassigned);
+
   // Requerimientos por estado
   const byStatusMap = new Map<string, { name: string; color: string; value: number }>();
   requirements.forEach((r) => {
@@ -33,13 +55,6 @@ export default async function ReporteriaPage() {
     const cur = byStatusMap.get(name) ?? { name, color: r.status?.color ?? "#94A3B8", value: 0 };
     cur.value += 1;
     byStatusMap.set(name, cur);
-  });
-
-  // Requerimientos por área
-  const byAreaMap = new Map<string, number>();
-  requirements.forEach((r) => {
-    const name = r.area?.name ?? "Sin área";
-    byAreaMap.set(name, (byAreaMap.get(name) ?? 0) + 1);
   });
 
   // Evolución acumulada del consumo de horas
@@ -50,13 +65,6 @@ export default async function ReporteriaPage() {
     return { date: e.entry_date, acumulado: Number(acc.toFixed(1)) };
   });
 
-  // Horas por sprint (estimadas vs consumidas)
-  const bySprint = sprints.map((s) => ({
-    name: s.name.length > 16 ? s.name.slice(0, 16) + "…" : s.name,
-    estimadas: Number(s.estimated_hours ?? 0),
-    consumidas: Number(s.consumed_hours ?? 0),
-  }));
-
   const finalized = requirements.filter((r) => r.status?.is_final).length;
   const pending = requirements.length - finalized;
 
@@ -64,13 +72,12 @@ export default async function ReporteriaPage() {
     <ReporteriaClient
       hours={hours}
       byStatus={[...byStatusMap.values()]}
-      byArea={[...byAreaMap.entries()].map(([name, value]) => ({ name, value }))}
       evolution={evolution}
-      bySprint={bySprint}
       blocks={blocks}
       totals={{ total: requirements.length, finalized, pending }}
       clientName={clientName}
       reportReqs={reportReqs}
+      sprintReport={sprintReport}
     />
   );
 }
