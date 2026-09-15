@@ -181,8 +181,8 @@ function TimeEntryModal({ open, onClose, requirements, sprints }: { open: boolea
           <div><Label>Horas</Label><Input type="number" name="hours" step="0.25" min="0.25" required /></div>
         </div>
         <div>
-          <Label>Requerimiento</Label>
-          <Select name="requirement_id"><option value="">—</option>{requirements.map((r) => <option key={r.id} value={r.id}>{r.code} · {r.title}</option>)}</Select>
+          <Label>Requerimiento *</Label>
+          <Select name="requirement_id" required defaultValue=""><option value="" disabled>Elegí un requerimiento…</option>{requirements.map((r) => <option key={r.id} value={r.id}>{r.code} · {r.title}</option>)}</Select>
         </div>
         <div>
           <Label>Sprint</Label>

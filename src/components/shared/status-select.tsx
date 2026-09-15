@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { updateRequirementField, quickLogHours } from "@/lib/actions";
@@ -25,7 +25,6 @@ export function StatusSelect({
 }) {
   const router = useRouter();
   const [current, setCurrent] = useState(value ?? "");
-  const [isPending, startTransition] = useTransition();
   const [finalOpen, setFinalOpen] = useState(false);
   const [hours, setHours] = useState(String(estimatedHours || ""));
   const [saving, setSaving] = useState(false);
@@ -34,11 +33,8 @@ export function StatusSelect({
   function onChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const next = e.target.value;
     const isFinal = statuses.find((s) => s.id === next)?.is_final;
-    setCurrent(next);
-    startTransition(async () => {
-      await updateRequirementField(requirementId, "status_id", next);
-      router.refresh();
-    });
+    setCurrent(next); // instantáneo
+    void updateRequirementField(requirementId, "status_id", next); // en segundo plano
     if (isFinal) { setHours(String(estimatedHours || "")); setFinalOpen(true); }
   }
 
@@ -59,7 +55,6 @@ export function StatusSelect({
       <select
         value={current}
         onChange={onChange}
-        disabled={isPending}
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
         style={{ borderColor: `${color}55`, color }}

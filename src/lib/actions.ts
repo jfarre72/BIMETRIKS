@@ -262,7 +262,7 @@ export async function addTimeEntry(_prev: ActionResult | null, formData: FormDat
   const schema = z.object({
     entry_date: z.string().min(1),
     hours: z.coerce.number().positive("Las horas deben ser mayores a 0"),
-    requirement_id: z.preprocess(emptyToNull, z.string().uuid().nullable()),
+    requirement_id: z.string().uuid("Elegí el requerimiento asociado"),
     sprint_id: z.preprocess(emptyToNull, z.string().uuid().nullable()),
     description: z.preprocess(emptyToNull, z.string().nullable()),
   });
@@ -339,6 +339,8 @@ export async function deleteRequirement(id: string) {
   // Soft-delete para preservar historial; se saca de los sprints.
   const { data: prevLinks } = await supabase.from("sprint_requirements").select("sprint_id").eq("requirement_id", id);
   await supabase.from("sprint_requirements").delete().eq("requirement_id", id);
+  // Las horas registradas se eliminan junto con el requerimiento.
+  await supabase.from("time_entries").delete().eq("requirement_id", id);
   const { error } = await supabase
     .from("requirements")
     .update({ archived_at: new Date().toISOString(), updated_by: uid })

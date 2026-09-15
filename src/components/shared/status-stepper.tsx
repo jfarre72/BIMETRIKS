@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { updateRequirementField, quickLogHours } from "@/lib/actions";
@@ -8,8 +8,9 @@ import { Badge, Button, Input, Label } from "@/components/ui";
 import { Modal } from "@/components/ui/sheet";
 import type { ReqStatus } from "@/lib/types";
 
-/** Cambia el estado al anterior/siguiente con un clic. Al llegar a un estado
- *  final abre el registro de horas reales (default = estimadas). */
+/** Cambia el estado al anterior/siguiente con un clic (optimista: el cambio se
+ *  ve al instante y se persiste en segundo plano). Al llegar a un estado final
+ *  abre el registro de horas reales (default = estimadas). */
 export function StatusStepper({
   requirementId,
   value,
@@ -24,22 +25,20 @@ export function StatusStepper({
   estimatedHours?: number;
 }) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [current, setCurrent] = useState(value ?? "");
   const [finalOpen, setFinalOpen] = useState(false);
   const [hours, setHours] = useState(String(estimatedHours || ""));
   const [saving, setSaving] = useState(false);
 
-  const idx = statuses.findIndex((s) => s.id === value);
-  const current = statuses[idx];
+  const idx = statuses.findIndex((s) => s.id === current);
+  const cur = statuses[idx];
   const prev = idx > 0 ? statuses[idx - 1] : null;
   const next = idx >= 0 && idx < statuses.length - 1 ? statuses[idx + 1] : null;
 
   function go(target: ReqStatus | null) {
     if (!target) return;
-    startTransition(async () => {
-      await updateRequirementField(requirementId, "status_id", target.id);
-      router.refresh();
-    });
+    setCurrent(target.id); // instantáneo
+    void updateRequirementField(requirementId, "status_id", target.id); // en segundo plano
     if (target.is_final) {
       setHours(String(estimatedHours || ""));
       setFinalOpen(true);
@@ -52,28 +51,18 @@ export function StatusStepper({
     await quickLogHours(requirementId, sprintId, Number(hours));
     setSaving(false);
     setFinalOpen(false);
-    router.refresh();
+    router.refresh(); // acá sí refrescamos para ver horas consumidas
   }
 
   return (
     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
-      <button
-        onClick={() => go(prev)}
-        disabled={!prev || isPending}
-        className="rounded-md border border-line p-1 text-muted hover:bg-canvas hover:text-ink disabled:opacity-30"
-        aria-label="Estado anterior"
-      >
+      <button onClick={() => go(prev)} disabled={!prev} className="rounded-md border border-line p-1 text-muted hover:bg-canvas hover:text-ink disabled:opacity-30" aria-label="Estado anterior">
         <ChevronLeft size={14} />
       </button>
       <span className="min-w-[110px] text-center">
-        {current ? <Badge color={current.color}>{current.name}</Badge> : <Badge>Sin estado</Badge>}
+        {cur ? <Badge color={cur.color}>{cur.name}</Badge> : <Badge>Sin estado</Badge>}
       </span>
-      <button
-        onClick={() => go(next)}
-        disabled={!next || isPending}
-        className="rounded-md border border-line p-1 text-muted hover:bg-canvas hover:text-ink disabled:opacity-30"
-        aria-label="Estado siguiente"
-      >
+      <button onClick={() => go(next)} disabled={!next} className="rounded-md border border-line p-1 text-muted hover:bg-canvas hover:text-ink disabled:opacity-30" aria-label="Estado siguiente">
         <ChevronRight size={14} />
       </button>
 
