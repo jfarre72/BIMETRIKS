@@ -47,7 +47,7 @@ export function HoursGauge({
 
         <div className="grid w-full grid-cols-3 gap-3 sm:max-w-xs">
           <Metric label="Contratadas" value={formatHours(contracted)} color="#0B1E3F" />
-          <Metric label="Consumidas" value={formatHours(consumed)} color="#1E5EFF" />
+          <Metric label="Utilizadas" value={formatHours(consumed)} color="#1E5EFF" />
           <Metric label="Disponibles" value={formatHours(available)} color="#16A34A" />
         </div>
       </CardBody>

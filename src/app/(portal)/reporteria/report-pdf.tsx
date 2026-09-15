@@ -94,7 +94,7 @@ export function ReportPdf({
 
         <div style={{ display: "flex", gap: 24, marginBottom: 16, fontSize: 12, color: "#334155" }}>
           <div>Horas contratadas: <b>{formatHours(hours.contracted)}</b></div>
-          <div>Consumidas: <b>{formatHours(hours.consumed)}</b></div>
+          <div>Utilizadas: <b>{formatHours(hours.consumed)}</b></div>
           <div>Disponibles: <b>{formatHours(hours.available)}</b></div>
         </div>
 

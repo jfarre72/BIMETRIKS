@@ -9,7 +9,7 @@ import { StatusSelect } from "@/components/shared/status-select";
 import { AttachmentUploader } from "@/components/shared/attachment-uploader";
 import { formatHours, formatDate } from "@/lib/utils";
 import { Timeline } from "./timeline";
-import { LogHoursButton } from "./log-hours";
+import { EditRequirementButton } from "./edit-requirement";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +32,7 @@ export default async function RequirementDetailPage({ params }: { params: { id: 
     ["Sprint", requirement.sprint?.name ?? "—"],
     ["Módulo", requirement.module ?? "—"],
     ["Horas estimadas", formatHours(requirement.estimated_hours)],
-    ["Horas consumidas", formatHours(requirement.consumed_hours)],
+    ["Horas utilizadas", formatHours(requirement.consumed_hours)],
     ["Creado", formatDate(requirement.created_at)],
     ["Actualizado", formatDate(requirement.updated_at)],
   ];
@@ -46,7 +46,7 @@ export default async function RequirementDetailPage({ params }: { params: { id: 
       <PageHeader
         title={requirement.title}
         subtitle={requirement.code}
-        actions={<LogHoursButton requirementId={requirement.id} sprintId={requirement.sprint?.id} />}
+        actions={<EditRequirementButton catalogs={catalogs} requirement={requirement} />}
       />
 
       {/* Encabezado horizontal con los datos del requerimiento */}
