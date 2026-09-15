@@ -33,7 +33,7 @@ export default async function SprintDetailPage({ params }: { params: { id: strin
       <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Requerimientos" value={requirements.length} icon={<Layers size={18} />} />
         <StatCard label="Horas estimadas" value={formatHours(sprint.estimated_hours)} accent="#0B1E3F" />
-        <StatCard label="Horas consumidas" value={formatHours(sprint.consumed_hours)} accent="#1E5EFF" />
+        <StatCard label="Horas utilizadas" value={formatHours(sprint.consumed_hours)} accent="#1E5EFF" />
         <StatCard label="% avance" value={`${progress}%`} accent="#16A34A" />
       </div>
 

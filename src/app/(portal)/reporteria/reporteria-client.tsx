@@ -48,7 +48,7 @@ export function ReporteriaClient({
 }) {
   const contractedVsConsumed = [
     { name: "Contratadas", horas: hours.contracted },
-    { name: "Consumidas", horas: hours.consumed },
+    { name: "Utilizadas", horas: hours.consumed },
     { name: "Disponibles", horas: hours.available },
   ];
 
@@ -62,7 +62,7 @@ export function ReporteriaClient({
         <StatCard label="Requerimientos" value={totals.total} accent="#0B1E3F" />
         <StatCard label="Finalizados" value={totals.finalized} accent="#16A34A" />
         <StatCard label="Pendientes" value={totals.pending} accent="#CA8A04" />
-        <StatCard label="Horas consumidas" value={formatHours(hours.consumed)} accent="#1E5EFF" />
+        <StatCard label="Horas utilizadas" value={formatHours(hours.consumed)} accent="#1E5EFF" />
       </div>
 
       <div className="mb-4">
@@ -70,7 +70,7 @@ export function ReporteriaClient({
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <ChartCard title="Horas contratadas vs consumidas">
+        <ChartCard title="Horas contratadas vs utilizadas">
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={contractedVsConsumed} barSize={54}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#EEF2F7" />
@@ -119,8 +119,8 @@ export function ReporteriaClient({
                 <YAxis tick={AXIS} axisLine={false} tickLine={false} />
                 <Tooltip cursor={{ fill: "#F7F9FC" }} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="estimadas" fill="#4FB2F0" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="consumidas" fill="#1E5EFF" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="estimadas" name="Estimadas" fill="#4FB2F0" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="consumidas" name="Utilizadas" fill="#1E5EFF" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}

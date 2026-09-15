@@ -32,9 +32,111 @@ const requirementSchema = z.object({
   validator_id: z.preprocess(emptyToNull, z.string().uuid().nullable()),
   estimated_hours: z.coerce.number().min(0).default(0),
   observations: z.preprocess(emptyToNull, z.string().nullable()),
+  sprint_id: z.preprocess(emptyToNull, z.string().uuid().nullable()).optional(),
 });
 
 export type ActionResult = { ok: boolean; error?: string; id?: string };
+
+// Inserta una entrada en el historial/timeline del requerimiento.
+async function logReqNote(
+  supabase: any,
+  requirementId: string,
+  eventType: string,
+  body: string,
+  authorId: string | null
+) {
+  await supabase.from("requirement_notes").insert({
+    requirement_id: requirementId,
+    event_type: eventType,
+    event_date: new Date().toISOString().slice(0, 10),
+    body,
+    author_id: authorId,
+  });
+}
+
+// Metadatos de los campos editables, para armar un historial legible.
+const REQ_FIELD_META: Record<string, { label: string; table?: string }> = {
+  title: { label: "Título" },
+  description: { label: "Descripción" },
+  module: { label: "Módulo" },
+  area_id: { label: "Área", table: "areas" },
+  type_id: { label: "Tipo", table: "req_types" },
+  priority_id: { label: "Prioridad", table: "req_priorities" },
+  status_id: { label: "Estado", table: "req_statuses" },
+  assignee_id: { label: "Responsable", table: "people" },
+  validator_id: { label: "Validación", table: "people" },
+  estimated_hours: { label: "Horas estimadas" },
+  observations: { label: "Observaciones" },
+};
+
+// Resuelve el nombre visible de un valor (id → nombre para campos catalogados).
+async function displayFieldValue(supabase: any, field: string, value: unknown): Promise<string> {
+  if (value === null || value === undefined || value === "") return "—";
+  const table = REQ_FIELD_META[field]?.table;
+  if (table) {
+    const { data } = await supabase.from(table).select("name").eq("id", value).single();
+    return (data as any)?.name ?? "—";
+  }
+  return String(value);
+}
+
+/** Compara los valores previos y nuevos de un requerimiento y registra en el
+ *  historial cada campo modificado. */
+async function logRequirementChanges(
+  supabase: any,
+  requirementId: string,
+  before: Record<string, any>,
+  after: Record<string, any>,
+  authorId: string | null
+) {
+  const lines: string[] = [];
+  for (const field of Object.keys(REQ_FIELD_META)) {
+    if (!(field in after)) continue;
+    const prev = before?.[field] ?? null;
+    const next = after[field] ?? null;
+    const changed =
+      field === "estimated_hours" ? Number(prev ?? 0) !== Number(next ?? 0) : (prev ?? null) !== (next ?? null);
+    if (!changed) continue;
+    const [from, to] = await Promise.all([
+      displayFieldValue(supabase, field, prev),
+      displayFieldValue(supabase, field, next),
+    ]);
+    lines.push(`${REQ_FIELD_META[field].label}: "${from}" → "${to}"`);
+  }
+  if (lines.length > 0) {
+    await logReqNote(supabase, requirementId, "edición", lines.join("\n"), authorId);
+  }
+}
+
+/** Reasigna el sprint de un requerimiento y lo registra en el historial.
+ *  `nextSprintId` null = quitar de todo sprint. Devuelve los sprints afectados. */
+async function setRequirementSprint(
+  supabase: any,
+  requirementId: string,
+  nextSprintId: string | null,
+  authorId: string | null
+): Promise<Set<string>> {
+  const { data: prevLinks } = await supabase
+    .from("sprint_requirements")
+    .select("sprint_id")
+    .eq("requirement_id", requirementId);
+  const currentSprintId = (prevLinks?.[0] as any)?.sprint_id ?? null;
+  const affected = new Set<string>((prevLinks ?? []).map((l: any) => l.sprint_id));
+  if (currentSprintId === nextSprintId) return affected;
+
+  await supabase.from("sprint_requirements").delete().eq("requirement_id", requirementId);
+  if (nextSprintId) {
+    await supabase
+      .from("sprint_requirements")
+      .insert({ sprint_id: nextSprintId, requirement_id: requirementId, added_by: authorId });
+    affected.add(nextSprintId);
+    const { data: sp } = await supabase.from("sprints").select("name").eq("id", nextSprintId).single();
+    await logReqNote(supabase, requirementId, "sprint", `Asignado al sprint "${(sp as any)?.name ?? ""}"`, authorId);
+  } else {
+    await logReqNote(supabase, requirementId, "sprint", "Quitado del sprint", authorId);
+  }
+  return affected;
+}
 
 export async function saveRequirement(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
   const parsed = requirementSchema.safeParse(Object.fromEntries(formData));
@@ -43,18 +145,36 @@ export async function saveRequirement(_prev: ActionResult | null, formData: Form
   }
   const supabase = createClient();
   const uid = await currentProfileId();
-  const { id, ...values } = parsed.data;
+  const { id, sprint_id, ...values } = parsed.data;
+  const sprintProvided = "sprint_id" in parsed.data;
 
   if (id) {
+    // Estado previo, para registrar en el historial qué cambió.
+    const { data: before } = await supabase
+      .from("requirements")
+      .select(Object.keys(REQ_FIELD_META).join(","))
+      .eq("id", id)
+      .single();
+
     const { error } = await supabase
       .from("requirements")
       .update({ ...values, updated_by: uid })
       .eq("id", id);
     if (error) return { ok: false, error: error.message };
+
+    await logRequirementChanges(supabase, id, (before as any) ?? {}, values, uid);
+
+    // Reasignación de sprint (queda registrada) y recálculo de su estado.
+    if (sprintProvided) {
+      const affected = await setRequirementSprint(supabase, id, sprint_id ?? null, uid);
+      for (const sid of affected) await syncSprintStatus(supabase, sid);
+      revalidatePath("/sprints");
+    }
+
     revalidatePath("/backlog");
     revalidatePath(`/tracking/${id}`);
     clearReadCache();
-  return { ok: true, id };
+    return { ok: true, id };
   }
 
   const projectId = await getProjectId();
@@ -73,6 +193,11 @@ export async function saveRequirement(_prev: ActionResult | null, formData: Form
     .select("id")
     .single();
   if (error) return { ok: false, error: error.message };
+  if (data?.id && sprint_id) {
+    const affected = await setRequirementSprint(supabase, data.id, sprint_id, uid);
+    for (const sid of affected) await syncSprintStatus(supabase, sid);
+    revalidatePath("/sprints");
+  }
   revalidatePath("/backlog");
   clearReadCache();
   return { ok: true, id: data?.id };
@@ -192,6 +317,10 @@ export async function assignToSprint(sprintId: string, requirementIds: string[])
   const rows = requirementIds.map((requirement_id) => ({ sprint_id: sprintId, requirement_id, added_by: uid }));
   const { error } = await supabase.from("sprint_requirements").upsert(rows, { onConflict: "sprint_id,requirement_id" });
   if (error) return { ok: false, error: error.message };
+  const { data: sp } = await supabase.from("sprints").select("name").eq("id", sprintId).single();
+  for (const requirement_id of requirementIds) {
+    await logReqNote(supabase, requirement_id, "sprint", `Asignado al sprint "${(sp as any)?.name ?? ""}"`, uid);
+  }
   revalidatePath("/backlog");
   revalidatePath("/sprints");
   revalidatePath(`/sprints/${sprintId}`);
@@ -214,6 +343,7 @@ export async function moveRequirement(
 
   // Sprints afectados (origen + destino) para recalcular su estado luego.
   const { data: prevLinks } = await supabase.from("sprint_requirements").select("sprint_id").eq("requirement_id", requirementId);
+  const currentSprintId = (prevLinks?.[0] as any)?.sprint_id ?? null;
   const affected = new Set<string>([...(prevLinks ?? []).map((l: any) => l.sprint_id)]);
   if (targetSprintId) affected.add(targetSprintId);
 
@@ -224,6 +354,16 @@ export async function moveRequirement(
       .from("sprint_requirements")
       .insert({ sprint_id: targetSprintId, requirement_id: requirementId, added_by: uid });
     if (error) return { ok: false, error: error.message };
+  }
+
+  // Registrar el cambio de sprint en el historial (solo si efectivamente cambió).
+  if (currentSprintId !== targetSprintId) {
+    if (targetSprintId) {
+      const { data: sp } = await supabase.from("sprints").select("name").eq("id", targetSprintId).single();
+      await logReqNote(supabase, requirementId, "sprint", `Asignado al sprint "${(sp as any)?.name ?? ""}"`, uid);
+    } else {
+      await logReqNote(supabase, requirementId, "sprint", "Quitado del sprint", uid);
+    }
   }
 
   // 2) Persistir el orden del grupo destino (sort_index = posición * 10).

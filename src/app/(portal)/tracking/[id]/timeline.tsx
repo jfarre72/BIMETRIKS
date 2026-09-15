@@ -15,6 +15,8 @@ const EVENT_COLOR: Record<string, string> = {
   prioridad: "#EA580C",
   horas: "#16A34A",
   hito: "#8B5CF6",
+  edición: "#0891B2",
+  sprint: "#DB2777",
 };
 
 export function Timeline({ requirementId, notes }: { requirementId: string; notes: RequirementNote[] }) {
@@ -95,7 +97,7 @@ export function Timeline({ requirementId, notes }: { requirementId: string; note
                   <Trash2 size={13} />
                 </button>
               </div>
-              <p className="mt-1 text-sm text-ink">{n.body}</p>
+              <p className="mt-1 whitespace-pre-line text-sm text-ink">{n.body}</p>
               {n.author && (
                 <p className="mt-0.5 text-xs text-muted">— {n.author.full_name ?? n.author.username}</p>
               )}

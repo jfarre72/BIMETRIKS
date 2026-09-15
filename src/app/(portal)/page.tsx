@@ -20,7 +20,7 @@ export default async function DashboardPage() {
       {/* KPIs de horas */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Horas contratadas" value={formatHours(hours.contracted)} icon={<Clock size={18} />} accent="#0B1E3F" />
-        <StatCard label="Horas consumidas" value={formatHours(hours.consumed)} icon={<TrendingUp size={18} />} accent="#1E5EFF" />
+        <StatCard label="Horas utilizadas" value={formatHours(hours.consumed)} icon={<TrendingUp size={18} />} accent="#1E5EFF" />
         <StatCard label="Horas disponibles" value={formatHours(hours.available)} icon={<Clock size={18} />} accent="#16A34A" />
         <StatCard label="% utilizado" value={`${pct(hours.consumed, hours.contracted)}%`} icon={<TrendingUp size={18} />} accent="#4E9A2E" />
       </div>

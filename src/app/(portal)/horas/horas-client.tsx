@@ -47,7 +47,7 @@ export function HorasClient({
     <div>
       <PageHeader
         title="Horas"
-        subtitle="Gestión de horas contratadas y consumidas"
+        subtitle="Gestión de horas contratadas y utilizadas"
         actions={
           <div className="flex gap-2">
             <Button variant="secondary" onClick={() => setContractOpen(true)}><FilePlus2 size={16} /> Horas contratadas</Button>
@@ -58,7 +58,7 @@ export function HorasClient({
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label="Horas contratadas" value={formatHours(hours.contracted)} icon={<Clock size={18} />} accent="#0B1E3F" />
-        <StatCard label="Horas consumidas" value={formatHours(hours.consumed)} hint={`${pct(hours.consumed, hours.contracted)}% utilizado`} icon={<Clock size={18} />} accent="#1E5EFF" />
+        <StatCard label="Horas utilizadas" value={formatHours(hours.consumed)} hint={`${pct(hours.consumed, hours.contracted)}% utilizado`} icon={<Clock size={18} />} accent="#1E5EFF" />
         <StatCard label="Horas disponibles" value={formatHours(hours.available)} icon={<Clock size={18} />} accent="#16A34A" />
       </div>
 

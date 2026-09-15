@@ -141,6 +141,12 @@ export function RequirementForm({
               {catalogs.people.map((p) => <option key={p.id} value={p.id}>{p.role ? `${p.name} · ${p.role}` : p.name}</option>)}
             </Select>
           </Field>
+          <Field label="Sprint">
+            <Select name="sprint_id" defaultValue={requirement?.sprint?.id ?? ""}>
+              <option value="">Sin asignar</option>
+              {catalogs.sprints.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </Select>
+          </Field>
         </div>
 
         <div>
