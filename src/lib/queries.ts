@@ -60,6 +60,9 @@ async function _getCatalogs(): Promise<Catalogs> {
 }
 
 export async function getRequirements(): Promise<Requirement[]> {
+  return cached("requirements", 8000, _getRequirements);
+}
+async function _getRequirements(): Promise<Requirement[]> {
   const supabase = createClient();
   const PROJECT_ID = await getProjectId();
   const { data } = await supabase
@@ -103,6 +106,9 @@ export async function getAttachments(reqId: string) {
 }
 
 export async function getSprints(): Promise<Sprint[]> {
+  return cached("sprints", 8000, _getSprints);
+}
+async function _getSprints(): Promise<Sprint[]> {
   const supabase = createClient();
   const PROJECT_ID = await getProjectId();
   const [{ data: sprints }, { data: hours }, { data: links }] = await Promise.all([
@@ -147,6 +153,9 @@ export async function getSprint(id: string): Promise<{ sprint: Sprint | null; re
 }
 
 export async function getProjectHours() {
+  return cached("projectHours", 8000, _getProjectHours);
+}
+async function _getProjectHours() {
   const supabase = createClient();
   const PROJECT_ID = await getProjectId();
   const { data } = await supabase
@@ -207,6 +216,9 @@ export async function getHourBlocks(): Promise<HourBlock[]> {
 }
 
 export async function getTasks() {
+  return cached("tasks", 6000, _getTasks);
+}
+async function _getTasks() {
   const supabase = createClient();
   const PROJECT_ID = await getProjectId();
   const { data } = await supabase
@@ -265,6 +277,9 @@ export interface BillingBlock {
 }
 
 export async function getBillingBlocks(): Promise<BillingBlock[]> {
+  return cached("billing", 8000, _getBillingBlocks);
+}
+async function _getBillingBlocks(): Promise<BillingBlock[]> {
   const supabase = createClient();
   const PROJECT_ID = await getProjectId();
   const [{ data: blocks }, { data: total }] = await Promise.all([
@@ -301,6 +316,9 @@ export async function getProjectDocuments() {
 }
 
 export async function getContractedHours(): Promise<ContractedHours[]> {
+  return cached("contractedHours", 8000, _getContractedHours);
+}
+async function _getContractedHours(): Promise<ContractedHours[]> {
   const supabase = createClient();
   const PROJECT_ID = await getProjectId();
   const { data } = await supabase
@@ -312,6 +330,9 @@ export async function getContractedHours(): Promise<ContractedHours[]> {
 }
 
 export async function getTimeEntries(limit = 100): Promise<TimeEntry[]> {
+  return cached(`timeEntries:${limit}`, 8000, () => _getTimeEntries(limit));
+}
+async function _getTimeEntries(limit: number): Promise<TimeEntry[]> {
   const supabase = createClient();
   const PROJECT_ID = await getProjectId();
   const { data } = await supabase
