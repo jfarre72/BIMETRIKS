@@ -9,13 +9,22 @@ import { cn } from "@/lib/utils";
  * archivo a la carpeta `public/` del repo con el nombre `logo.svg` (preferido,
  * fondo transparente) o `logo.png` (fondo transparente, ~200px de alto).
  */
+const SIZE_CLASS: Record<string, string> = {
+  sm: "h-10",
+  md: "h-16",
+  lg: "h-24",
+  xl: "h-40",
+};
+
 export function Logo({
   variant = "dark",
   showTagline = true,
+  size = "md",
   className,
 }: {
   variant?: "dark" | "light";
   showTagline?: boolean;
+  size?: "sm" | "md" | "lg" | "xl";
   className?: string;
 }) {
   const [srcIdx, setSrcIdx] = useState(0);
@@ -28,14 +37,14 @@ export function Logo({
       {failed ? (
         <div className="flex items-center gap-2.5">
           <ArrowsMark />
-          <span className={cn("text-xl font-bold tracking-tight", wordmark)}>BiMetriks</span>
+          <span className={cn("text-3xl font-bold tracking-tight", wordmark)}>BiMetriks</span>
         </div>
       ) : (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={sources[srcIdx]}
           alt="BiMetriks"
-          className="h-20 w-auto object-contain"
+          className={cn("w-auto max-w-full object-contain", SIZE_CLASS[size])}
           onError={() => setSrcIdx((i) => i + 1)}
         />
       )}

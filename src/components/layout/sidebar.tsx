@@ -45,7 +45,7 @@ export function Sidebar({ user, clientName }: { user: { name: string; username: 
     <>
       {/* Topbar mobile */}
       <div className="flex items-center justify-between border-b border-navy-800 bg-navy-900 px-4 py-3 lg:hidden">
-        <Logo variant="light" showTagline={false} />
+        <Logo variant="light" showTagline={false} size="md" />
         <button onClick={() => setOpen(true)} className="text-white/80" aria-label="Abrir menú">
           <Menu size={22} />
         </button>
@@ -59,8 +59,8 @@ export function Sidebar({ user, clientName }: { user: { name: string; username: 
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex items-center justify-between px-5 py-6">
-          <Logo variant="light" />
+        <div className="flex items-start justify-between px-4 py-6">
+          <Logo variant="light" size="xl" className="min-w-0 flex-1" />
           <button onClick={() => setOpen(false)} className="text-white/70 lg:hidden" aria-label="Cerrar menú">
             <X size={20} />
           </button>
