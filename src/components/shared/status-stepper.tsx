@@ -3,10 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
-import { updateRequirementField, quickLogHours } from "@/lib/actions";
+import { updateRequirementField, quickLogHours, updateEstimatedHours } from "@/lib/actions";
 import { Badge, Button, Input, Label } from "@/components/ui";
 import { Modal } from "@/components/ui/sheet";
 import type { ReqStatus } from "@/lib/types";
+
+const isEstimado = (s: ReqStatus | null | undefined) =>
+  !!s && s.name.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim() === "estimado";
 
 /** Cambia el estado al anterior/siguiente con un clic (optimista: el cambio se
  *  ve al instante y se persiste en segundo plano). Al llegar a un estado final
@@ -27,7 +30,9 @@ export function StatusStepper({
   const router = useRouter();
   const [current, setCurrent] = useState(value ?? "");
   const [finalOpen, setFinalOpen] = useState(false);
+  const [estOpen, setEstOpen] = useState(false);
   const [hours, setHours] = useState(String(estimatedHours || ""));
+  const [estHours, setEstHours] = useState(String(estimatedHours || ""));
   const [saving, setSaving] = useState(false);
 
   const idx = statuses.findIndex((s) => s.id === current);
@@ -42,6 +47,10 @@ export function StatusStepper({
     if (target.is_final) {
       setHours(String(estimatedHours || ""));
       setFinalOpen(true);
+    } else if (isEstimado(target) && !(estimatedHours > 0)) {
+      // Al pasar a "Estimado" sin horas cargadas, pedirlas.
+      setEstHours("");
+      setEstOpen(true);
     }
   }
 
@@ -52,6 +61,15 @@ export function StatusStepper({
     setSaving(false);
     setFinalOpen(false);
     router.refresh(); // acá sí refrescamos para ver horas consumidas
+  }
+
+  async function saveEstimated(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    await updateEstimatedHours(requirementId, Number(estHours));
+    setSaving(false);
+    setEstOpen(false);
+    router.refresh();
   }
 
   return (
@@ -75,6 +93,19 @@ export function StatusStepper({
           </div>
           <div className="flex justify-end">
             <Button type="submit" disabled={saving}>{saving && <Loader2 size={15} className="animate-spin" />} Guardar horas</Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal open={estOpen} onClose={() => setEstOpen(false)} title="Horas estimadas">
+        <form onSubmit={saveEstimated} className="space-y-3">
+          <p className="text-sm text-muted">El requerimiento pasó a “Estimado”. Cargá las horas estimadas.</p>
+          <div>
+            <Label>Horas estimadas</Label>
+            <Input type="number" step="0.25" min="0" value={estHours} onChange={(e) => setEstHours(e.target.value)} autoFocus required />
+          </div>
+          <div className="flex justify-end">
+            <Button type="submit" disabled={saving}>{saving && <Loader2 size={15} className="animate-spin" />} Guardar</Button>
           </div>
         </form>
       </Modal>
