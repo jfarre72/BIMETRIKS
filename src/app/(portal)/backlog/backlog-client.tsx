@@ -42,7 +42,9 @@ export function BacklogClient({
     });
   }, [localReqs, q, area, status, priority, type]);
 
-  // Remonta el board cuando cambian filtros o datos del servidor.
+  // Remonta el board cuando cambian filtros o la pertenencia a sprints. Los
+  // cambios de campos (estado, horas) se sincronizan sin remontar (ver board),
+  // para no perder los grupos expandidos.
   const boardKey = useMemo(
     () => `${q}|${area}|${status}|${priority}|${type}|` + filtered.map((r) => `${r.id}:${r.sprint?.id ?? ""}`).join(","),
     [filtered, q, area, status, priority, type]
