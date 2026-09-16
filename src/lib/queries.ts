@@ -230,7 +230,10 @@ export async function getHourBlocks(): Promise<HourBlock[]> {
 }
 
 export async function getTasks() {
-  return cached("tasks", 6000, _getTasks);
+  // Sin caché: es dato mutable y con actualizaciones optimistas en el cliente.
+  // Un TTL en memoria (por instancia) puede devolver el estado viejo tras
+  // marcar/crear una tarea y hacer que "reaparezca" al refrescar.
+  return _getTasks();
 }
 async function _getTasks() {
   const supabase = createClient();
