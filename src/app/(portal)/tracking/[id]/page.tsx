@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { getRequirement, getRequirementNotes, getAttachments, getCatalogs } from "@/lib/queries";
+import { getRequirement, getRequirementNotes, getAttachments, getCatalogs, getChecklist } from "@/lib/queries";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardBody } from "@/components/ui";
 import { PriorityBadge, TypeBadge } from "@/components/shared/req-badges";
 import { StatusSelect } from "@/components/shared/status-select";
+import { Checklist } from "@/components/shared/checklist";
 import { AttachmentUploader } from "@/components/shared/attachment-uploader";
 import { formatHours, formatDate } from "@/lib/utils";
 import { Timeline } from "./timeline";
@@ -16,10 +17,11 @@ export const dynamic = "force-dynamic";
 export default async function RequirementDetailPage({ params }: { params: { id: string } }) {
   const requirement = await getRequirement(params.id);
   if (!requirement) notFound();
-  const [notes, attachments, catalogs] = await Promise.all([
+  const [notes, attachments, catalogs, checklist] = await Promise.all([
     getRequirementNotes(params.id),
     getAttachments(params.id),
     getCatalogs(),
+    getChecklist(params.id),
   ]);
 
   const meta: [string, React.ReactNode][] = [
@@ -69,6 +71,13 @@ export default async function RequirementDetailPage({ params }: { params: { id: 
               <p className="mt-1 text-sm text-ink">{requirement.observations}</p>
             </div>
           )}
+        </CardBody>
+      </Card>
+
+      {/* Checklist (subtareas) */}
+      <Card className="mb-4">
+        <CardBody>
+          <Checklist requirementId={requirement.id} initial={checklist as any} />
         </CardBody>
       </Card>
 

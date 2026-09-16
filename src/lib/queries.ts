@@ -108,6 +108,17 @@ export async function getAttachments(reqId: string) {
   }));
 }
 
+export async function getChecklist(reqId: string) {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("requirement_checklist")
+    .select("id,requirement_id,text,done,sort_index,created_at")
+    .eq("requirement_id", reqId)
+    .order("sort_index", { ascending: true })
+    .order("created_at", { ascending: true });
+  return (data ?? []) as any[];
+}
+
 export async function getSprints(): Promise<Sprint[]> {
   return cached("sprints", 8000, _getSprints);
 }
