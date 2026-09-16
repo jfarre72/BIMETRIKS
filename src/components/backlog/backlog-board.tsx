@@ -24,7 +24,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Layers, Inbox, Trash2, Pencil, ExternalLink, ChevronDown, ChevronRight } from "lucide-react";
 import { Card } from "@/components/ui";
-import { PriorityBadge, StatusBadge, CreatorBadge, creatorOrigin } from "@/components/shared/req-badges";
+import { PriorityBadge, StatusBadge, creatorOrigin } from "@/components/shared/req-badges";
 import { StatusStepper } from "@/components/shared/status-stepper";
 import { SprintStatusBadge } from "@/components/shared/sprint-status";
 import { formatHours } from "@/lib/utils";
@@ -268,6 +268,7 @@ function GroupTable({
                     <th className="w-12 py-2 pl-3">#</th>
                     <th className="w-24 px-2 py-2">ID</th>
                     <th className="px-2 py-2">Título</th>
+                    <th className="w-32 px-2 py-2">Creado por</th>
                     <th className="w-40 px-2 py-2">Área</th>
                     <th className="w-24 px-2 py-2">Prioridad</th>
                     <th className="w-52 px-2 py-2">Estado</th>
@@ -278,7 +279,7 @@ function GroupTable({
                 </thead>
                 <tbody>
                   {rows.length === 0 ? (
-                    <tr><td colSpan={9} className="px-4 py-6 text-center text-sm text-muted">Arrastrá requerimientos hasta acá.</td></tr>
+                    <tr><td colSpan={10} className="px-4 py-6 text-center text-sm text-muted">Arrastrá requerimientos hasta acá.</td></tr>
                   ) : (
                     rows.map((r, i) => (
                       <Row key={r.id} req={r} index={i + 1} statuses={statuses} canManage={canManage} onEdit={onEdit} onDelete={onDelete} onOpen={onOpen} onPatch={onPatch} />
@@ -288,7 +289,7 @@ function GroupTable({
                 {rows.length > 0 && (
                   <tfoot>
                     <tr className="border-t border-line font-medium">
-                      <td colSpan={6} className="px-2 py-2 text-right text-xs text-muted">Total</td>
+                      <td colSpan={7} className="px-2 py-2 text-right text-xs text-muted">Total</td>
                       <td className="px-2 py-2 text-right tabular">{formatHours(totalEst)}</td>
                       <td className="px-2 py-2 text-right tabular">{formatHours(totalCons)}</td>
                       <td></td>
@@ -353,11 +354,12 @@ function Row({
         </span>
       </td>
       <td className="whitespace-nowrap px-2 py-2 font-mono text-xs font-semibold text-brand">{req.code}</td>
-      <td className="px-2 py-2">
-        <div className="flex items-center gap-2">
-          <span className="font-medium text-ink">{req.title}</span>
-          <CreatorBadge creator={req.creator} />
-        </div>
+      <td className="px-2 py-2 font-medium text-ink">{req.title}</td>
+      <td className="whitespace-nowrap px-2 py-2">
+        <span className="inline-flex items-center gap-1.5 text-sm text-ink">
+          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: origin.color }} />
+          {req.creator?.full_name || req.creator?.username || origin.label}
+        </span>
       </td>
       <td className="whitespace-nowrap px-2 py-2 text-muted">{req.area?.name ?? "—"}</td>
       <td className="px-2 py-2"><PriorityBadge priority={req.priority} /></td>

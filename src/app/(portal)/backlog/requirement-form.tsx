@@ -112,11 +112,11 @@ export function RequirementForm({
               {catalogs.areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </Select>
           </Field>
-          <Field label="Página / Módulo">
-            <Input name="module" defaultValue={requirement?.module ?? ""} />
-          </Field>
           <Field label="Dashboard">
             <Combobox name="dashboard" options={catalogs.dashboards} defaultValue={requirement?.dashboard ?? ""} placeholder="Elegí o escribí uno nuevo…" />
+          </Field>
+          <Field label="Página / Módulo">
+            <Input name="module" defaultValue={requirement?.module ?? ""} />
           </Field>
 
           {clientMode ? (
@@ -192,8 +192,7 @@ export function RequirementForm({
             </div>
           </div>
 
-          {/* Adjuntos (sólo staff: el CLIENT no tiene permisos de storage) */}
-          {!clientMode && (
+          {/* Adjuntos (imágenes / archivos) — disponible también para el cliente. */}
           <div className="md:col-span-3">
             <Label>Imágenes / archivos</Label>
             <div
@@ -224,7 +223,6 @@ export function RequirementForm({
               </ul>
             )}
           </div>
-          )}
         </div>
 
         {error && <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
