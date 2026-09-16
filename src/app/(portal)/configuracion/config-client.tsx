@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Pencil, Trash2, ArrowUp, ArrowDown, Loader2, Check, X } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
@@ -227,6 +227,19 @@ function PeopleManager({ people }: { people: PersonRow[] }) {
   const [saving, setSaving] = useState(false);
   const [, startTransition] = useTransition();
 
+  // Ordenados por empresa (alfabético; sin empresa al final) y luego por nombre.
+  const sorted = useMemo(() => {
+    return [...people].sort((a, b) => {
+      const ca = (a.company ?? "").trim();
+      const cb = (b.company ?? "").trim();
+      if (!ca && cb) return 1;
+      if (ca && !cb) return -1;
+      const byCompany = ca.localeCompare(cb, "es", { sensitivity: "base" });
+      if (byCompany !== 0) return byCompany;
+      return a.name.localeCompare(b.name, "es", { sensitivity: "base" });
+    });
+  }, [people]);
+
   function openNew() { setEditing(null); setName(""); setRole(""); setCompany(""); setOpen(true); }
   function openEdit(p: PersonRow) { setEditing(p); setName(p.name); setRole(p.role ?? ""); setCompany(p.company ?? ""); setOpen(true); }
 
@@ -264,7 +277,7 @@ function PeopleManager({ people }: { people: PersonRow[] }) {
                 </tr>
               </thead>
               <tbody>
-                {people.map((p) => (
+                {sorted.map((p) => (
                   <tr key={p.id} className="border-b border-line last:border-0 hover:bg-canvas/40">
                     <td className="px-2 py-2.5">
                       <div className="flex items-center gap-3">
