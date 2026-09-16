@@ -14,7 +14,7 @@ import type {
 // y sprint asignado, todo en una sola llamada a la base.
 const REQ_SELECT = `
   id, code, title, description, module, estimated_hours, observations, sort_index,
-  area_id, type_id, priority_id, status_id, assignee_id, validator_id,
+  area_id, type_id, priority_id, status_id, assignee_id, validator_id, created_by,
   created_at, updated_at,
   area:areas(id,name),
   type:req_types(id,name,color),
@@ -22,6 +22,7 @@ const REQ_SELECT = `
   status:req_statuses(id,name,color,is_final),
   assignee:people!requirements_assignee_id_fkey(id,name,role),
   validator:people!requirements_validator_id_fkey(id,name,role),
+  creator:profiles!requirements_created_by_fkey(id,username,full_name,role),
   time_entries(hours),
   sprint_requirements(sprint:sprints(id,name))
 `;
@@ -106,6 +107,26 @@ export async function getAttachments(reqId: string) {
     ...a,
     url: supabase.storage.from("attachments").getPublicUrl(a.path).data.publicUrl,
   }));
+}
+
+export interface CurrentProfile {
+  id: string;
+  username: string;
+  full_name: string | null;
+  role: "ADMIN" | "CONSULTANT" | "CLIENT";
+}
+
+/** Perfil del usuario autenticado (con su rol). null si no hay sesión. */
+export async function getCurrentProfile(): Promise<CurrentProfile | null> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from("profiles")
+    .select("id,username,full_name,role")
+    .eq("id", user.id)
+    .single();
+  return (data as any) ?? null;
 }
 
 export async function getChecklist(reqId: string) {

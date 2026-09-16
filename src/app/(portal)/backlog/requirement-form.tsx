@@ -15,6 +15,7 @@ export function RequirementForm({
   catalogs,
   requirement,
   onSaved,
+  clientMode = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -22,6 +23,8 @@ export function RequirementForm({
   requirement?: Requirement | null;
   /** Permite a la vista actualizar el listado de inmediato (inserción optimista). */
   onSaved?: (req: Requirement, isEdit: boolean) => void;
+  /** Rol CLIENT: formulario reducido (sólo carga; el staff prioriza). */
+  clientMode?: boolean;
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -111,47 +114,53 @@ export function RequirementForm({
           <Field label="Página / Módulo">
             <Input name="module" defaultValue={requirement?.module ?? ""} />
           </Field>
-          <Field label="Sprint">
-            <Select name="sprint_id" defaultValue={requirement?.sprint?.id ?? ""}>
-              <option value="">Sin asignar</option>
-              {catalogs.sprints.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </Select>
-          </Field>
 
-          <Field label="Tipo">
-            <Select name="type_id" defaultValue={requirement?.type_id ?? ""}>
-              <option value="">—</option>
-              {catalogs.types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </Select>
-          </Field>
-          <Field label="Prioridad">
-            <Select name="priority_id" defaultValue={requirement?.priority_id ?? ""}>
-              <option value="">—</option>
-              {catalogs.priorities.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </Select>
-          </Field>
-          <Field label="Estado">
-            <Select name="status_id" defaultValue={requirement?.status_id ?? catalogs.statuses[0]?.id ?? ""}>
-              <option value="">—</option>
-              {catalogs.statuses.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </Select>
-          </Field>
+          {/* Campos de gestión: sólo staff (el cliente sólo carga). */}
+          {!clientMode && (
+            <>
+              <Field label="Sprint">
+                <Select name="sprint_id" defaultValue={requirement?.sprint?.id ?? ""}>
+                  <option value="">Sin asignar</option>
+                  {catalogs.sprints.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </Select>
+              </Field>
 
-          <Field label="Responsable">
-            <Select name="assignee_id" defaultValue={requirement?.assignee_id ?? ""}>
-              <option value="">—</option>
-              {catalogs.people.map((p) => <option key={p.id} value={p.id}>{p.role ? `${p.name} · ${p.role}` : p.name}</option>)}
-            </Select>
-          </Field>
-          <Field label="Responsable de validación">
-            <Select name="validator_id" defaultValue={requirement?.validator_id ?? ""}>
-              <option value="">—</option>
-              {catalogs.people.map((p) => <option key={p.id} value={p.id}>{p.role ? `${p.name} · ${p.role}` : p.name}</option>)}
-            </Select>
-          </Field>
-          <Field label="Horas estimadas">
-            <Input name="estimated_hours" type="number" step="0.5" min="0" defaultValue={requirement?.estimated_hours ?? 0} />
-          </Field>
+              <Field label="Tipo">
+                <Select name="type_id" defaultValue={requirement?.type_id ?? ""}>
+                  <option value="">—</option>
+                  {catalogs.types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </Select>
+              </Field>
+              <Field label="Prioridad">
+                <Select name="priority_id" defaultValue={requirement?.priority_id ?? ""}>
+                  <option value="">—</option>
+                  {catalogs.priorities.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </Select>
+              </Field>
+              <Field label="Estado">
+                <Select name="status_id" defaultValue={requirement?.status_id ?? catalogs.statuses[0]?.id ?? ""}>
+                  <option value="">—</option>
+                  {catalogs.statuses.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </Select>
+              </Field>
+
+              <Field label="Responsable">
+                <Select name="assignee_id" defaultValue={requirement?.assignee_id ?? ""}>
+                  <option value="">—</option>
+                  {catalogs.people.map((p) => <option key={p.id} value={p.id}>{p.role ? `${p.name} · ${p.role}` : p.name}</option>)}
+                </Select>
+              </Field>
+              <Field label="Responsable de validación">
+                <Select name="validator_id" defaultValue={requirement?.validator_id ?? ""}>
+                  <option value="">—</option>
+                  {catalogs.people.map((p) => <option key={p.id} value={p.id}>{p.role ? `${p.name} · ${p.role}` : p.name}</option>)}
+                </Select>
+              </Field>
+              <Field label="Horas estimadas">
+                <Input name="estimated_hours" type="number" step="0.5" min="0" defaultValue={requirement?.estimated_hours ?? 0} />
+              </Field>
+            </>
+          )}
 
           <div className="md:col-span-3 lg:col-span-3">
             <div className="grid grid-cols-1 gap-x-5 gap-y-4 lg:grid-cols-2">
@@ -166,7 +175,8 @@ export function RequirementForm({
             </div>
           </div>
 
-          {/* Adjuntos */}
+          {/* Adjuntos (sólo staff: el CLIENT no tiene permisos de storage) */}
+          {!clientMode && (
           <div className="md:col-span-3">
             <Label>Imágenes / archivos</Label>
             <div
@@ -197,6 +207,7 @@ export function RequirementForm({
               </ul>
             )}
           </div>
+          )}
         </div>
 
         {error && <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}

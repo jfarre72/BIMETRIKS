@@ -14,6 +14,15 @@ async function currentProfileId(): Promise<string | null> {
   return user?.id ?? null;
 }
 
+/** Rol del usuario autenticado (ADMIN | CONSULTANT | CLIENT | null). */
+async function currentProfileRole(): Promise<string | null> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  return (data as any)?.role ?? null;
+}
+
 const emptyToNull = (v: unknown) => (v === "" || v === undefined ? null : v);
 
 // ---------------------------------------------------------------------------
@@ -229,8 +238,29 @@ export async function saveRequirement(_prev: ActionResult | null, formData: Form
   }
   const supabase = createClient();
   const uid = await currentProfileId();
-  const { id, sprint_id, ...values } = parsed.data;
-  const sprintProvided = "sprint_id" in parsed.data;
+  const role = await currentProfileRole();
+  const isClient = role === "CLIENT";
+  let { id, sprint_id, ...values } = parsed.data;
+  let sprintProvided = "sprint_id" in parsed.data;
+
+  // El CLIENT sólo puede CREAR (nunca editar/priorizar). Se ignoran los campos
+  // de gestión y el requerimiento arranca en "Nuevo" para que el staff lo priorice.
+  if (isClient) {
+    if (id) return { ok: false, error: "No tenés permisos para editar requerimientos." };
+    const statuses = await getProjectStatuses(supabase);
+    const nuevo = statuses.find((s) => norm(s.name) === "nuevo");
+    values = {
+      ...values,
+      type_id: null,
+      priority_id: null,
+      status_id: nuevo?.id ?? null,
+      assignee_id: null,
+      validator_id: null,
+      estimated_hours: 0,
+    };
+    sprint_id = null;
+    sprintProvided = false;
+  }
 
   if (id) {
     // Estado previo, para registrar en el historial qué cambió.

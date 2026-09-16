@@ -1,10 +1,12 @@
 import { getProjectHours, getRequirements, getSprints, getTimeEntries, getHourBlocks, getClientName } from "@/lib/queries";
+import { requireStaff } from "@/lib/auth";
 import { ReporteriaClient } from "./reporteria-client";
 import type { ReportReq, SprintReport } from "./report-pdf";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReporteriaPage() {
+  await requireStaff();
   const [hours, requirements, sprints, entries, blocks, clientName] = await Promise.all([
     getProjectHours(),
     getRequirements(),

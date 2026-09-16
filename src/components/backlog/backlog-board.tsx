@@ -24,7 +24,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Layers, Inbox, Trash2, Pencil, ExternalLink, ChevronDown, ChevronRight } from "lucide-react";
 import { Card } from "@/components/ui";
-import { PriorityBadge } from "@/components/shared/req-badges";
+import { PriorityBadge, StatusBadge, CreatorBadge, creatorOrigin } from "@/components/shared/req-badges";
 import { StatusStepper } from "@/components/shared/status-stepper";
 import { SprintStatusBadge } from "@/components/shared/sprint-status";
 import { formatHours } from "@/lib/utils";
@@ -39,11 +39,14 @@ export function BacklogBoard({
   sprints,
   statuses,
   onEdit,
+  canManage = true,
 }: {
   requirements: Requirement[];
   sprints: Sprint[];
   statuses: Catalogs["statuses"];
   onEdit: (req: Requirement) => void;
+  /** false para el rol CLIENT: sólo lectura (sin drag, estado ni acciones). */
+  canManage?: boolean;
 }) {
   const router = useRouter();
   const groupOrder = useMemo(() => [...sprints.map((s) => s.id), UNASSIGNED], [sprints]);
@@ -177,6 +180,7 @@ export function BacklogBoard({
               unassigned={isUnassigned}
               rows={groups[gid] ?? []}
               statuses={statuses}
+              canManage={canManage}
               expanded={expanded.has(gid)}
               onToggle={() => toggle(gid)}
               onEdit={onEdit}
@@ -208,6 +212,7 @@ function GroupTable({
   unassigned = false,
   rows,
   statuses,
+  canManage = true,
   expanded,
   onToggle,
   onEdit,
@@ -223,6 +228,7 @@ function GroupTable({
   unassigned?: boolean;
   rows: Requirement[];
   statuses: Catalogs["statuses"];
+  canManage?: boolean;
   expanded: boolean;
   onToggle: () => void;
   onEdit: (r: Requirement) => void;
@@ -275,7 +281,7 @@ function GroupTable({
                     <tr><td colSpan={9} className="px-4 py-6 text-center text-sm text-muted">Arrastrá requerimientos hasta acá.</td></tr>
                   ) : (
                     rows.map((r, i) => (
-                      <Row key={r.id} req={r} index={i + 1} statuses={statuses} onEdit={onEdit} onDelete={onDelete} onOpen={onOpen} onPatch={onPatch} />
+                      <Row key={r.id} req={r} index={i + 1} statuses={statuses} canManage={canManage} onEdit={onEdit} onDelete={onDelete} onOpen={onOpen} onPatch={onPatch} />
                     ))
                   )}
                 </tbody>
@@ -306,6 +312,7 @@ function Row({
   req,
   index,
   statuses,
+  canManage = true,
   onEdit,
   onDelete,
   onOpen,
@@ -314,44 +321,62 @@ function Row({
   req: Requirement;
   index: number;
   statuses: Catalogs["statuses"];
+  canManage?: boolean;
   onEdit: (r: Requirement) => void;
   onDelete: (r: Requirement) => void;
   onOpen: (id: string) => void;
   onPatch: (reqId: string, patch: Partial<Requirement>) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: req.id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: req.id, disabled: !canManage });
+  const origin = creatorOrigin(req.creator);
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.4 : 1,
+    // Barra de color a la izquierda según el origen (Samboro / BiMetriks).
+    boxShadow: `inset 4px 0 0 0 ${origin.color}`,
   };
+  // Sólo staff arrastra y usa el stepper/acciones. El CLIENT ve la fila en modo lectura.
+  const dragProps = canManage ? { ...attributes, ...listeners } : {};
   return (
     <tr
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
+      {...dragProps}
       onClick={() => onOpen(req.id)}
-      className="cursor-grab touch-none border-b border-line last:border-0 hover:bg-canvas/50 active:cursor-grabbing"
+      className={`touch-none border-b border-line last:border-0 hover:bg-canvas/50 ${canManage ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
     >
       <td className="py-2 pl-3">
         <span className="inline-flex items-center gap-1.5 text-muted">
-          <GripVertical size={14} className="opacity-60" />
+          {canManage && <GripVertical size={14} className="opacity-60" />}
           <span className="tabular text-xs font-semibold">{index}</span>
         </span>
       </td>
       <td className="whitespace-nowrap px-2 py-2 font-mono text-xs font-semibold text-brand">{req.code}</td>
-      <td className="px-2 py-2 font-medium text-ink">{req.title}</td>
+      <td className="px-2 py-2">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-ink">{req.title}</span>
+          <CreatorBadge creator={req.creator} />
+        </div>
+      </td>
       <td className="whitespace-nowrap px-2 py-2 text-muted">{req.area?.name ?? "—"}</td>
       <td className="px-2 py-2"><PriorityBadge priority={req.priority} /></td>
       <td className="px-2 py-2">
-        <StatusStepper requirementId={req.id} value={req.status_id} statuses={statuses} sprintId={req.sprint?.id ?? null} estimatedHours={Number(req.estimated_hours ?? 0)} onPatch={onPatch} />
+        {canManage ? (
+          <StatusStepper requirementId={req.id} value={req.status_id} statuses={statuses} sprintId={req.sprint?.id ?? null} estimatedHours={Number(req.estimated_hours ?? 0)} onPatch={onPatch} />
+        ) : (
+          <StatusBadge status={req.status} />
+        )}
       </td>
       <td className="px-2 py-2 text-right tabular text-muted">{formatHours(req.estimated_hours)}</td>
       <td className="px-2 py-2 text-right tabular font-medium">{formatHours(req.consumed_hours)}</td>
       <td className="whitespace-nowrap px-2 py-2 text-right" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
-        <button onClick={() => onEdit(req)} className="rounded-lg p-1 text-muted hover:bg-canvas hover:text-ink" aria-label="Editar"><Pencil size={15} /></button>
-        <button onClick={() => onDelete(req)} className="rounded-lg p-1 text-muted hover:bg-red-50 hover:text-red-600" aria-label="Eliminar"><Trash2 size={15} /></button>
+        {canManage && (
+          <>
+            <button onClick={() => onEdit(req)} className="rounded-lg p-1 text-muted hover:bg-canvas hover:text-ink" aria-label="Editar"><Pencil size={15} /></button>
+            <button onClick={() => onDelete(req)} className="rounded-lg p-1 text-muted hover:bg-red-50 hover:text-red-600" aria-label="Eliminar"><Trash2 size={15} /></button>
+          </>
+        )}
       </td>
     </tr>
   );

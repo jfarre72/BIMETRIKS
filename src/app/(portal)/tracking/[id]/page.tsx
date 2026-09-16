@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { getRequirement, getRequirementNotes, getAttachments, getCatalogs, getChecklist } from "@/lib/queries";
+import { getRequirement, getRequirementNotes, getAttachments, getCatalogs, getChecklist, getCurrentProfile } from "@/lib/queries";
+import { isStaffRole } from "@/lib/auth";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardBody } from "@/components/ui";
-import { PriorityBadge, TypeBadge } from "@/components/shared/req-badges";
+import { PriorityBadge, TypeBadge, StatusBadge, CreatorBadge } from "@/components/shared/req-badges";
 import { StatusSelect } from "@/components/shared/status-select";
 import { Checklist } from "@/components/shared/checklist";
 import { AttachmentUploader } from "@/components/shared/attachment-uploader";
@@ -17,18 +18,24 @@ export const dynamic = "force-dynamic";
 export default async function RequirementDetailPage({ params }: { params: { id: string } }) {
   const requirement = await getRequirement(params.id);
   if (!requirement) notFound();
-  const [notes, attachments, catalogs, checklist] = await Promise.all([
+  const [notes, attachments, catalogs, checklist, profile] = await Promise.all([
     getRequirementNotes(params.id),
     getAttachments(params.id),
     getCatalogs(),
     getChecklist(params.id),
+    getCurrentProfile(),
   ]);
+  const canManage = isStaffRole(profile?.role);
 
   const meta: [string, React.ReactNode][] = [
     ["Área", requirement.area?.name ?? "—"],
     ["Tipo", requirement.type ? <TypeBadge type={requirement.type} /> : "—"],
     ["Prioridad", <PriorityBadge key="p" priority={requirement.priority} />],
-    ["Estado", <StatusSelect key="s" requirementId={requirement.id} value={requirement.status_id} statuses={catalogs.statuses} sprintId={requirement.sprint?.id ?? null} estimatedHours={Number(requirement.estimated_hours ?? 0)} />],
+    ["Estado", canManage
+      ? <StatusSelect key="s" requirementId={requirement.id} value={requirement.status_id} statuses={catalogs.statuses} sprintId={requirement.sprint?.id ?? null} estimatedHours={Number(requirement.estimated_hours ?? 0)} />
+      : <StatusBadge key="s" status={requirement.status} />],
+    ["Origen", <CreatorBadge key="o" creator={requirement.creator} />],
+    ["Creado por", requirement.creator?.full_name || requirement.creator?.username || "—"],
     ["Responsable", requirement.assignee?.name ?? "—"],
     ["Validación", requirement.validator?.name ?? "—"],
     ["Sprint", requirement.sprint?.name ?? "—"],
@@ -48,7 +55,7 @@ export default async function RequirementDetailPage({ params }: { params: { id: 
       <PageHeader
         title={requirement.title}
         subtitle={requirement.code}
-        actions={<EditRequirementButton catalogs={catalogs} requirement={requirement} />}
+        actions={canManage ? <EditRequirementButton catalogs={catalogs} requirement={requirement} /> : undefined}
       />
 
       {/* Encabezado horizontal con los datos del requerimiento */}
@@ -77,16 +84,18 @@ export default async function RequirementDetailPage({ params }: { params: { id: 
       {/* Checklist (subtareas) */}
       <Card className="mb-4">
         <CardBody>
-          <Checklist requirementId={requirement.id} initial={checklist as any} />
+          <Checklist requirementId={requirement.id} initial={checklist as any} readOnly={!canManage} />
         </CardBody>
       </Card>
 
       {/* Adjuntos */}
-      <Card className="mb-4">
-        <CardBody>
-          <AttachmentUploader requirementId={requirement.id} initial={attachments as any} />
-        </CardBody>
-      </Card>
+      {canManage && (
+        <Card className="mb-4">
+          <CardBody>
+            <AttachmentUploader requirementId={requirement.id} initial={attachments as any} />
+          </CardBody>
+        </Card>
+      )}
 
       {/* Timeline / notas debajo, a lo ancho */}
       <Card>
