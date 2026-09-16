@@ -10,6 +10,14 @@ import { upsertCatalogItem, deleteCatalogItem, moveCatalogItem, type CatalogKind
 import { upsertPerson, deletePerson } from "@/lib/actions";
 
 export type CatalogRow = { id: string; name: string; color?: string; is_final?: boolean; order: number };
+
+// Color de la empresa del responsable: Samboro (rojo) / BiMetriks (azul).
+function companyColor(company: string): string | undefined {
+  const c = company.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+  if (c.includes("samboro")) return "#DC2626"; // rojo
+  if (c.includes("bimetriks") || c.includes("bi metriks")) return "#1E5EFF"; // azul
+  return undefined; // otras empresas: badge neutro
+}
 export type PersonRow = { id: string; name: string; role: string | null; company?: string | null };
 
 type Data = Record<CatalogKind, CatalogRow[]>;
@@ -245,18 +253,36 @@ function PeopleManager({ people }: { people: PersonRow[] }) {
         {people.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted">Agregá el primer responsable (ej: “Juan Farré · BI”).</p>
         ) : (
-          <ul className="divide-y divide-line">
-            {people.map((p) => (
-              <li key={p.id} className="flex items-center gap-3 py-2.5">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand/10 text-xs font-semibold text-brand">{p.name.slice(0, 1).toUpperCase()}</span>
-                <span className="flex-1 text-sm font-medium text-ink">{p.name}</span>
-                {p.company && <Badge color="#0B1E3F">{p.company}</Badge>}
-                {p.role && <Badge>{p.role}</Badge>}
-                <button onClick={() => openEdit(p)} className="rounded-lg p-1.5 text-muted hover:bg-canvas hover:text-ink"><Pencil size={15} /></button>
-                <button onClick={() => remove(p)} className="rounded-lg p-1.5 text-muted hover:bg-red-50 hover:text-red-600"><Trash2 size={15} /></button>
-              </li>
-            ))}
-          </ul>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
+                  <th className="px-2 py-2">Responsable</th>
+                  <th className="w-40 px-2 py-2">Empresa</th>
+                  <th className="w-48 px-2 py-2">Rol / Área</th>
+                  <th className="w-20 px-2 py-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {people.map((p) => (
+                  <tr key={p.id} className="border-b border-line last:border-0 hover:bg-canvas/40">
+                    <td className="px-2 py-2.5">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand/10 text-xs font-semibold text-brand">{p.name.slice(0, 1).toUpperCase()}</span>
+                        <span className="font-medium text-ink">{p.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-2 py-2.5">{p.company ? <Badge color={companyColor(p.company)}>{p.company}</Badge> : <span className="text-muted">—</span>}</td>
+                    <td className="px-2 py-2.5">{p.role ? <Badge>{p.role}</Badge> : <span className="text-muted">—</span>}</td>
+                    <td className="whitespace-nowrap px-2 py-2.5 text-right">
+                      <button onClick={() => openEdit(p)} className="rounded-lg p-1.5 text-muted hover:bg-canvas hover:text-ink"><Pencil size={15} /></button>
+                      <button onClick={() => remove(p)} className="rounded-lg p-1.5 text-muted hover:bg-red-50 hover:text-red-600"><Trash2 size={15} /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
 
         <Modal open={open} onClose={() => setOpen(false)} title={editing ? "Editar responsable" : "Nuevo responsable"}>
