@@ -52,6 +52,7 @@ export interface Requirement {
   title: string;
   description: string | null;
   module: string | null;
+  dashboard: string | null;
   estimated_hours: number;
   observations: string | null;
   sort_index?: number;

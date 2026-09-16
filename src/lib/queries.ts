@@ -13,7 +13,7 @@ import type {
 // Query única de requerimiento: catálogos, horas consumidas (time_entries embebidas)
 // y sprint asignado, todo en una sola llamada a la base.
 const REQ_SELECT = `
-  id, code, title, description, module, estimated_hours, observations, sort_index,
+  id, code, title, description, module, dashboard, estimated_hours, observations, sort_index,
   area_id, type_id, priority_id, status_id, assignee_id, validator_id, created_by,
   created_at, updated_at,
   area:areas(id,name),

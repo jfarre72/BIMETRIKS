@@ -114,9 +114,25 @@ export function RequirementForm({
           <Field label="Página / Módulo">
             <Input name="module" defaultValue={requirement?.module ?? ""} />
           </Field>
+          <Field label="Dashboard">
+            <Input name="dashboard" defaultValue={requirement?.dashboard ?? ""} placeholder="¿En qué dashboard y página?" />
+          </Field>
 
-          {/* Campos de gestión: sólo staff (el cliente sólo carga). */}
-          {!clientMode && (
+          {clientMode ? (
+            // El cliente ve estos campos fijos (los define el staff al priorizar).
+            <>
+              <Field label="Estado">
+                <Input value="Nuevo" disabled readOnly className="cursor-not-allowed bg-canvas text-muted" />
+              </Field>
+              <Field label="Sprint">
+                <Input value="Sin asignar" disabled readOnly className="cursor-not-allowed bg-canvas text-muted" />
+              </Field>
+              <Field label="Horas estimadas">
+                <Input placeholder="—" disabled readOnly className="cursor-not-allowed bg-canvas text-muted" />
+              </Field>
+            </>
+          ) : (
+            // Campos de gestión: sólo staff.
             <>
               <Field label="Sprint">
                 <Select name="sprint_id" defaultValue={requirement?.sprint?.id ?? ""}>
@@ -256,6 +272,7 @@ function buildOptimistic(
     title: v("title") ?? "",
     description: v("description"),
     module: v("module"),
+    dashboard: v("dashboard"),
     estimated_hours: Number(v("estimated_hours") ?? 0),
     observations: v("observations"),
     sort_index: base?.sort_index ?? Number.MAX_SAFE_INTEGER,

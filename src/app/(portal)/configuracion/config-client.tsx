@@ -13,7 +13,7 @@ export type CatalogRow = { id: string; name: string; color?: string; is_final?: 
 export type PersonRow = { id: string; name: string; role: string | null };
 
 type Data = Record<CatalogKind, CatalogRow[]>;
-type View = "people" | CatalogKind;
+type View = "people" | "definitions" | CatalogKind;
 
 const CATALOG_TABS: { key: CatalogKind; label: string; hasColor: boolean; ordered: boolean }[] = [
   { key: "req_statuses", label: "Estados", hasColor: true, ordered: true },
@@ -30,9 +30,11 @@ export function ConfigClient({ data, people }: { data: Data; people: PersonRow[]
   const [isPending, startTransition] = useTransition();
 
   const isPeople = view === "people";
+  const isDefinitions = view === "definitions";
+  const isCatalog = !isPeople && !isDefinitions;
   const tab = view as CatalogKind;
-  const active = CATALOG_TABS.find((t) => t.key === tab);
-  const rows = isPeople ? [] : data[tab];
+  const active = isCatalog ? CATALOG_TABS.find((t) => t.key === tab) : undefined;
+  const rows = isCatalog ? data[tab] : [];
 
   function onDelete(row: CatalogRow) {
     if (!confirm(`¿Eliminar "${row.name}"?`)) return;
@@ -54,7 +56,7 @@ export function ConfigClient({ data, people }: { data: Data; people: PersonRow[]
         title="Configuración"
         subtitle="Responsables y catálogos: estados, prioridades, tipos y áreas"
         actions={
-          !isPeople && <Button onClick={() => { setEditing(null); setFormOpen(true); }}><Plus size={16} /> Nuevo</Button>
+          isCatalog && <Button onClick={() => { setEditing(null); setFormOpen(true); }}><Plus size={16} /> Nuevo</Button>
         }
       />
 
@@ -64,10 +66,13 @@ export function ConfigClient({ data, people }: { data: Data; people: PersonRow[]
         {CATALOG_TABS.map((t) => (
           <TabBtn key={t.key} active={view === t.key} onClick={() => setView(t.key)}>{t.label}</TabBtn>
         ))}
+        <TabBtn active={isDefinitions} onClick={() => setView("definitions")}>Definiciones</TabBtn>
       </div>
 
       {isPeople ? (
         <PeopleManager people={people} />
+      ) : isDefinitions ? (
+        <DefinitionsPanel />
       ) : (
         <Card>
           <CardBody>
@@ -110,6 +115,88 @@ export function ConfigClient({ data, people }: { data: Data; people: PersonRow[]
         />
       )}
     </div>
+  );
+}
+
+// Reglas de negocio vigentes del portal (documentación viva para el equipo).
+const DEFINITIONS: { title: string; rules: string[] }[] = [
+  {
+    title: "Flujo de estados de un requerimiento",
+    rules: [
+      "Los estados y su orden se definen en la solapa «Estados». El flujo va de izquierda a derecha respetando ese orden.",
+      "Un requerimiento nuevo arranca en «Nuevo».",
+      "Al asignarlo a un sprint (o si estaba sin estado), pasa automáticamente a «Priorizado».",
+      "Al cargar horas estimadas, pasa a «Estimado» (si su estado era anterior en el flujo).",
+      "Al llevarlo a un estado final (p. ej. «Finalizado»), se piden las horas reales, que quedan registradas.",
+      "Un estado marcado como «final» cuenta como Finalizado para las métricas del sprint.",
+    ],
+  },
+  {
+    title: "Sprints",
+    rules: [
+      "El estado del sprint se recalcula solo: sin requerimientos → «Planificado»; con requerimientos → «Activo»; todos finalizados → «Finalizado».",
+      "«Pausado» es manual y no se pisa automáticamente.",
+    ],
+  },
+  {
+    title: "Horas",
+    rules: [
+      "El consumo se imputa FIFO: primero se agota el bloque de horas contratadas más antiguo.",
+      "En el backlog, la columna «Util.» son las horas utilizadas (consumidas).",
+    ],
+  },
+  {
+    title: "Perfiles y accesos",
+    rules: [
+      "Staff (ADMIN / CONSULTANT, BiMetriks): acceso total a todas las secciones.",
+      "Cliente (CLIENT, Samboro): sólo VE Inicio, Tareas, Backlog, Sprints, Tracking y Horas.",
+      "El cliente NO accede a Facturación, Reportería, Documentación ni Configuración.",
+      "El cliente sólo puede crear requerimientos; no puede editarlos ni priorizarlos.",
+    ],
+  },
+  {
+    title: "Requerimientos del cliente",
+    rules: [
+      "Se cargan con un formulario reducido: Título, Área, Página/Módulo, Dashboard, Descripción y Observaciones.",
+      "Arrancan en estado «Nuevo», sin sprint y sin horas estimadas. El staff los prioriza.",
+      "Se registra quién creó cada requerimiento y se muestra en el detalle («Creado por»).",
+      "El color/etiqueta de origen distingue: Samboro (ámbar) vs BiMetriks (navy), con una barra a la izquierda de cada fila.",
+      "El campo «Dashboard» indica en qué dashboard y página se quiere el requerimiento.",
+    ],
+  },
+  {
+    title: "Otros",
+    rules: [
+      "Cada requerimiento puede tener un checklist de subtareas con barra de progreso.",
+      "El gráfico de Inicio muestra todos los estados (incluso en 0) en el orden de Configuración, con sensación de flujo.",
+    ],
+  },
+];
+
+function DefinitionsPanel() {
+  return (
+    <Card>
+      <CardBody>
+        <p className="mb-4 text-sm text-muted">
+          Reglas de negocio vigentes del portal. Es documentación de referencia para el equipo (no se edita desde acá).
+        </p>
+        <div className="space-y-5">
+          {DEFINITIONS.map((section) => (
+            <div key={section.title}>
+              <h3 className="mb-2 text-sm font-semibold text-ink">{section.title}</h3>
+              <ul className="space-y-1.5">
+                {section.rules.map((rule, i) => (
+                  <li key={i} className="flex gap-2 text-sm text-muted">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
+                    <span>{rule}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </CardBody>
+    </Card>
   );
 }
 

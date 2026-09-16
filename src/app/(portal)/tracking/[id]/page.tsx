@@ -40,6 +40,7 @@ export default async function RequirementDetailPage({ params }: { params: { id: 
     ["Validación", requirement.validator?.name ?? "—"],
     ["Sprint", requirement.sprint?.name ?? "—"],
     ["Módulo", requirement.module ?? "—"],
+    ["Dashboard", requirement.dashboard ?? "—"],
     ["Horas estimadas", formatHours(requirement.estimated_hours)],
     ["Horas utilizadas", formatHours(requirement.consumed_hours)],
     ["Creado", formatDate(requirement.created_at)],
