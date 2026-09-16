@@ -1,5 +1,5 @@
 import { Clock, TrendingUp, ListChecks, Layers, Inbox } from "lucide-react";
-import { getDashboard } from "@/lib/queries";
+import { getDashboard, getCatalogs } from "@/lib/queries";
 import { formatHours, pct } from "@/lib/utils";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/ui/stat-card";
@@ -9,8 +9,8 @@ import { HourBlocksChart } from "@/components/dashboard/hour-blocks-chart";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const { hours, requirements, blocks } = await getDashboard();
-  const byStatus = groupByStatus(requirements);
+  const [{ hours, requirements, blocks }, catalogs] = await Promise.all([getDashboard(), getCatalogs()]);
+  const byStatus = groupByStatus(requirements, catalogs.statuses);
 
   const totalReqs = requirements.length;
   const assignedReqs = requirements.filter((r) => r.sprint?.id).length;
@@ -48,15 +48,24 @@ export default async function DashboardPage() {
   );
 }
 
-function groupByStatus(reqs: any[]) {
-  const map = new Map<string, { name: string; color: string; value: number; order: number }>();
+/**
+ * Arma el flujo mostrando TODOS los estados configurados (aunque tengan 0
+ * requerimientos) en el orden definido en Configuración (sort_order). Si hay
+ * requerimientos sin estado, se agregan al final en un bucket "Sin estado".
+ */
+function groupByStatus(reqs: any[], statuses: any[]) {
+  const counts = new Map<string, number>();
+  let noStatus = 0;
   reqs.forEach((r) => {
-    const name = r.status?.name ?? "Sin estado";
-    const color = r.status?.color ?? "#94A3B8";
-    const order = r.status?.sort_order ?? 99;
-    const cur = map.get(name) ?? { name, color, value: 0, order };
-    cur.value += 1;
-    map.set(name, cur);
+    const id = r.status?.id ?? r.status_id ?? null;
+    if (!id) noStatus += 1;
+    else counts.set(id, (counts.get(id) ?? 0) + 1);
   });
-  return [...map.values()].sort((a, b) => a.order - b.order);
+
+  const ordered = [...statuses]
+    .sort((a, b) => (a.sort_order ?? 99) - (b.sort_order ?? 99))
+    .map((s) => ({ name: s.name, color: s.color ?? "#94A3B8", value: counts.get(s.id) ?? 0 }));
+
+  if (noStatus > 0) ordered.push({ name: "Sin estado", color: "#94A3B8", value: noStatus });
+  return ordered;
 }

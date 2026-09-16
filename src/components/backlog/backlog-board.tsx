@@ -174,6 +174,7 @@ export function BacklogBoard({
               title={isUnassigned ? "Sin asignar" : sprint?.name ?? "Sprint"}
               status={isUnassigned ? undefined : sprint?.status}
               icon={isUnassigned ? <Inbox size={16} /> : <Layers size={16} />}
+              unassigned={isUnassigned}
               rows={groups[gid] ?? []}
               statuses={statuses}
               expanded={expanded.has(gid)}
@@ -204,6 +205,7 @@ function GroupTable({
   title,
   status,
   icon,
+  unassigned = false,
   rows,
   statuses,
   expanded,
@@ -218,6 +220,7 @@ function GroupTable({
   title: string;
   status?: string;
   icon: React.ReactNode;
+  unassigned?: boolean;
   rows: Requirement[];
   statuses: Catalogs["statuses"];
   expanded: boolean;
@@ -234,7 +237,7 @@ function GroupTable({
 
   return (
     <Card className="overflow-hidden">
-      <div className="flex items-center justify-between border-b border-line bg-canvas/60 px-3 py-2">
+      <div className={`flex items-center justify-between border-b border-line px-3 py-2 ${unassigned ? "bg-slate-200/70" : "bg-canvas/60"}`}>
         <button onClick={onToggle} className="flex items-center gap-2 text-left">
           <span className="text-muted">{expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</span>
           <span className="text-muted">{icon}</span>
@@ -263,7 +266,7 @@ function GroupTable({
                     <th className="w-24 px-2 py-2">Prioridad</th>
                     <th className="w-52 px-2 py-2">Estado</th>
                     <th className="w-16 px-2 py-2 text-right">Est.</th>
-                    <th className="w-16 px-2 py-2 text-right">Cons.</th>
+                    <th className="w-16 px-2 py-2 text-right">Util.</th>
                     <th className="w-16 px-2 py-2"></th>
                   </tr>
                 </thead>
@@ -290,7 +293,7 @@ function GroupTable({
             </div>
           ) : (
             <div className="px-4 py-2 text-xs text-muted">
-              {rows.length} req · {formatHours(totalEst)} est · {formatHours(totalCons)} cons — {isOver ? "soltá para asignar" : "plegado"}
+              {rows.length} req · {formatHours(totalEst)} est · {formatHours(totalCons)} util — {isOver ? "soltá para asignar" : "plegado"}
             </div>
           )}
         </div>
