@@ -233,6 +233,28 @@ async function maybePrioritizeOnSprint(supabase: any, requirementId: string, aut
   await changeStatus(supabase, requirementId, priorizado.id, authorId, "Priorizado automáticamente al asignar a un sprint");
 }
 
+/** Garantiza que el dashboard exista en el catálogo (lo agrega si es nuevo). */
+async function ensureDashboard(supabase: any, name: string | null | undefined): Promise<void> {
+  const value = (name ?? "").trim();
+  if (!value) return;
+  const projectId = await getProjectId();
+  const { data: existing } = await supabase
+    .from("dashboards")
+    .select("id")
+    .eq("project_id", projectId)
+    .ilike("name", value)
+    .limit(1);
+  if (existing && existing.length > 0) return;
+  const { data: last } = await supabase
+    .from("dashboards")
+    .select("sort_order")
+    .eq("project_id", projectId)
+    .order("sort_order", { ascending: false })
+    .limit(1);
+  const sort_order = Number((last?.[0] as any)?.sort_order ?? 0) + 1;
+  await supabase.from("dashboards").insert({ project_id: projectId, name: value, sort_order });
+}
+
 export async function saveRequirement(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
   const parsed = requirementSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
@@ -263,6 +285,9 @@ export async function saveRequirement(_prev: ActionResult | null, formData: Form
     sprint_id = null;
     sprintProvided = false;
   }
+
+  // Si el dashboard indicado es nuevo, lo agregamos al catálogo.
+  await ensureDashboard(supabase, values.dashboard);
 
   if (id) {
     // Estado previo, para registrar en el historial qué cambió.

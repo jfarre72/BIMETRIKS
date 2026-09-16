@@ -20,6 +20,7 @@ const CATALOG_TABS: { key: CatalogKind; label: string; hasColor: boolean; ordere
   { key: "req_priorities", label: "Prioridades", hasColor: true, ordered: true },
   { key: "req_types", label: "Tipos", hasColor: true, ordered: false },
   { key: "areas", label: "Áreas / Capítulos", hasColor: false, ordered: true },
+  { key: "dashboards", label: "Dashboards", hasColor: false, ordered: true },
 ];
 
 export function ConfigClient({ data, people }: { data: Data; people: PersonRow[] }) {

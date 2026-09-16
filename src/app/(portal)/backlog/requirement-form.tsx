@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, Upload, X } from "lucide-react";
 import { Modal } from "@/components/ui/sheet";
 import { Button, Input, Label, Select, Textarea } from "@/components/ui";
+import { Combobox } from "@/components/shared/combobox";
 import { saveRequirement, type ActionResult } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/client";
 import type { Catalogs, Requirement } from "@/lib/types";
@@ -115,7 +116,7 @@ export function RequirementForm({
             <Input name="module" defaultValue={requirement?.module ?? ""} />
           </Field>
           <Field label="Dashboard">
-            <Input name="dashboard" defaultValue={requirement?.dashboard ?? ""} placeholder="¿En qué dashboard y página?" />
+            <Combobox name="dashboard" options={catalogs.dashboards} defaultValue={requirement?.dashboard ?? ""} placeholder="Elegí o escribí uno nuevo…" />
           </Field>
 
           {clientMode ? (

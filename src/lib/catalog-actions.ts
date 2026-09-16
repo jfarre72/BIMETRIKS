@@ -5,13 +5,14 @@ import { createClient } from "@/lib/supabase/server";
 import { getProjectId } from "@/lib/project";
 import { clearReadCache } from "@/lib/cache";
 
-export type CatalogKind = "areas" | "req_statuses" | "req_priorities" | "req_types";
+export type CatalogKind = "areas" | "req_statuses" | "req_priorities" | "req_types" | "dashboards";
 
 const TABLES: Record<CatalogKind, string> = {
   areas: "areas",
   req_statuses: "req_statuses",
   req_priorities: "req_priorities",
   req_types: "req_types",
+  dashboards: "dashboards",
 };
 
 function revalidateAll() {
@@ -34,7 +35,7 @@ export async function upsertCatalogItem(
   const PROJECT_ID = await getProjectId();
 
   const values: Record<string, unknown> = { name };
-  if (kind !== "areas") values.color = payload.color ?? "#64748B";
+  if (kind !== "areas" && kind !== "dashboards") values.color = payload.color ?? "#64748B";
   if (kind === "req_statuses") values.is_final = payload.is_final ?? false;
 
   if (payload.id) {
@@ -42,7 +43,7 @@ export async function upsertCatalogItem(
     if (error) return { ok: false, error: error.message };
   } else {
     // sort_order / weight = al final
-    if (kind === "areas" || kind === "req_statuses") {
+    if (kind === "areas" || kind === "req_statuses" || kind === "dashboards") {
       const { data } = await supabase
         .from(table)
         .select("sort_order")

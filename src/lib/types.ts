@@ -142,4 +142,5 @@ export interface Catalogs {
   types: ReqType[];
   people: Person[];
   sprints: Pick<Sprint, "id" | "name" | "status">[];
+  dashboards: string[];
 }
