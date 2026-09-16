@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Search, Pencil, Trash2, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
@@ -23,18 +23,23 @@ function estado(t: Task): { label: string; color: string } {
 
 export function TareasClient({ tasks, people }: { tasks: Task[]; people: string[] }) {
   const router = useRouter();
+  const [, startTransition] = useTransition();
   const [filter, setFilter] = useState<Filter>("abiertas");
   const [q, setQ] = useState("");
   const [quick, setQuick] = useState("");
-  const [adding, setAdding] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
 
-  const done = tasks.filter((t) => t.done).length;
-  const overdue = tasks.filter((t) => !t.done && t.due_date && t.due_date < today).length;
+  // Copia local para actualizaciones optimistas: los cambios se ven al instante
+  // y se persisten en segundo plano (sin esperar el ida y vuelta al servidor).
+  const [items, setItems] = useState<Task[]>(tasks);
+  useEffect(() => setItems(tasks), [tasks]);
+
+  const done = items.filter((t) => t.done).length;
+  const overdue = items.filter((t) => !t.done && t.due_date && t.due_date < today).length;
 
   const filtered = useMemo(() => {
-    return tasks.filter((t) => {
+    return items.filter((t) => {
       if (q && !`${t.title} ${t.detail ?? ""} ${t.assignee ?? ""}`.toLowerCase().includes(q.toLowerCase())) return false;
       const od = !t.done && t.due_date && t.due_date < today;
       if (filter === "abiertas") return !t.done;
@@ -43,25 +48,38 @@ export function TareasClient({ tasks, people }: { tasks: Task[]; people: string[
       if (filter === "hechos") return t.done;
       return true;
     });
-  }, [tasks, q, filter]);
+  }, [items, q, filter]);
 
-  async function onQuickAdd(e: React.FormEvent) {
+  function onQuickAdd(e: React.FormEvent) {
     e.preventDefault();
-    if (!quick.trim()) return;
-    setAdding(true);
-    await quickAddTask(quick);
-    setAdding(false);
+    const title = quick.trim();
+    if (!title) return;
+    // Alta optimista con id temporal; se reemplaza al refrescar del servidor.
+    const temp: Task = {
+      id: `temp-${Date.now()}`, title, detail: null, assignee: null,
+      label: null, due_date: null, done: false, created_at: new Date().toISOString(),
+    };
+    setItems((prev) => [temp, ...prev]);
     setQuick("");
-    router.refresh();
+    startTransition(async () => {
+      await quickAddTask(title);
+      router.refresh();
+    });
   }
-  async function onToggle(t: Task) {
-    await toggleTask(t.id, !t.done);
-    router.refresh();
+  function onToggle(t: Task) {
+    setItems((prev) => prev.map((x) => (x.id === t.id ? { ...x, done: !x.done } : x)));
+    startTransition(async () => {
+      await toggleTask(t.id, !t.done);
+      router.refresh();
+    });
   }
-  async function onDelete(t: Task) {
+  function onDelete(t: Task) {
     if (!confirm("¿Eliminar esta tarea?")) return;
-    await deleteTask(t.id);
-    router.refresh();
+    setItems((prev) => prev.filter((x) => x.id !== t.id));
+    startTransition(async () => {
+      await deleteTask(t.id);
+      router.refresh();
+    });
   }
 
   return (
@@ -87,7 +105,7 @@ export function TareasClient({ tasks, people }: { tasks: Task[]; people: string[
           </div>
           <form onSubmit={onQuickAdd} className="flex flex-1 gap-2">
             <Input placeholder="Agregar tema rápido…" value={quick} onChange={(e) => setQuick(e.target.value)} />
-            <Button type="submit" variant="secondary" disabled={adding}>{adding ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Agregar</Button>
+            <Button type="submit" variant="secondary"><Plus size={16} /> Agregar</Button>
           </form>
           <Button onClick={() => { setEditing(null); setFormOpen(true); }}><Plus size={16} /> Nueva tarea</Button>
         </div>

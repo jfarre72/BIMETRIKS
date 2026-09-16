@@ -41,7 +41,9 @@ export function StatusStepper({
   const idx = statuses.findIndex((s) => s.id === current);
   const cur = statuses[idx];
   const prev = idx > 0 ? statuses[idx - 1] : null;
-  const next = idx >= 0 && idx < statuses.length - 1 ? statuses[idx + 1] : null;
+  // Sin estado (idx === -1): la flecha derecha arranca el flujo en el primer estado.
+  const next =
+    idx === -1 ? statuses[0] ?? null : idx < statuses.length - 1 ? statuses[idx + 1] : null;
 
   async function go(target: ReqStatus | null) {
     if (!target) return;

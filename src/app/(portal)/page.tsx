@@ -3,7 +3,6 @@ import { getDashboard } from "@/lib/queries";
 import { formatHours, pct } from "@/lib/utils";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/ui/stat-card";
-import { HoursDonut } from "@/components/dashboard/hours-donut";
 import { StatusFlow } from "@/components/dashboard/status-flow";
 import { HourBlocksChart } from "@/components/dashboard/hour-blocks-chart";
 
@@ -22,28 +21,27 @@ export default async function DashboardPage() {
       <PageHeader title="Inicio" subtitle="Estado general del servicio" />
 
       {/* KPIs de horas */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="Horas contratadas" value={formatHours(hours.contracted)} icon={<Clock size={18} />} accent="#0B1E3F" />
-        <StatCard label="Horas utilizadas" value={formatHours(hours.consumed)} icon={<TrendingUp size={18} />} accent="#1E5EFF" />
-        <StatCard label="Horas disponibles" value={formatHours(hours.available)} icon={<Clock size={18} />} accent="#16A34A" />
-        <StatCard label="% utilizado" value={`${pct(hours.consumed, hours.contracted)}%`} icon={<TrendingUp size={18} />} accent="#4E9A2E" />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard compact label="Horas contratadas" value={formatHours(hours.contracted)} icon={<Clock size={16} />} accent="#0B1E3F" />
+        <StatCard compact label="Horas utilizadas" value={formatHours(hours.consumed)} icon={<TrendingUp size={16} />} accent="#1E5EFF" />
+        <StatCard compact label="Horas disponibles" value={formatHours(hours.available)} icon={<Clock size={16} />} accent="#16A34A" />
+        <StatCard compact label="% utilizado" value={`${pct(hours.consumed, hours.contracted)}%`} icon={<TrendingUp size={16} />} accent="#4E9A2E" />
       </div>
 
       {/* Indicadores de requerimientos */}
-      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Requerimientos totales" value={totalReqs} icon={<ListChecks size={18} />} accent="#0B1E3F" />
-        <StatCard label="Asignados a sprint" value={assignedReqs} hint={`${pct(assignedReqs, totalReqs)}% del total`} icon={<Layers size={18} />} accent="#1E5EFF" />
-        <StatCard label="Pendientes de asignar" value={unassignedReqs} hint={`${pct(unassignedReqs, totalReqs)}% del total`} icon={<Inbox size={18} />} accent="#CA8A04" />
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <StatCard compact label="Requerimientos totales" value={totalReqs} icon={<ListChecks size={16} />} accent="#0B1E3F" />
+        <StatCard compact label="Asignados a sprint" value={assignedReqs} hint={`${pct(assignedReqs, totalReqs)}% del total`} icon={<Layers size={16} />} accent="#1E5EFF" />
+        <StatCard compact label="Pendientes de asignar" value={unassignedReqs} hint={`${pct(unassignedReqs, totalReqs)}% del total`} icon={<Inbox size={16} />} accent="#CA8A04" />
       </div>
 
-      {/* Torta de utilización + flujo de estados */}
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <HoursDonut consumed={hours.consumed} available={hours.available} />
+      {/* Flujo de requerimientos por estado (a todo el ancho) */}
+      <div className="mt-3">
         <StatusFlow data={byStatus} total={requirements.length} />
       </div>
 
       {/* Horas por bloque */}
-      <div className="mt-4">
+      <div className="mt-3">
         <HourBlocksChart blocks={blocks} />
       </div>
     </div>

@@ -206,13 +206,19 @@ async function changeStatus(
   for (const l of (links ?? []) as any[]) await syncSprintStatus(supabase, l.sprint_id);
 }
 
-/** Al asignar a un sprint, un requerimiento en "Nuevo" pasa a "Priorizado". */
+/**
+ * Al asignar a un sprint, un requerimiento sin estado o en "Nuevo" pasa a
+ * "Priorizado" automáticamente (arranca el flujo desde ahí).
+ */
 async function maybePrioritizeOnSprint(supabase: any, requirementId: string, authorId: string | null): Promise<void> {
   const { data: r } = await supabase.from("requirements").select("status_id").eq("id", requirementId).single();
   const statuses = await getProjectStatuses(supabase);
-  const cur = statuses.find((s) => s.id === (r as any)?.status_id);
   const priorizado = statuses.find((s) => norm(s.name) === "priorizado");
-  if (!priorizado || !cur || norm(cur.name) !== "nuevo") return;
+  if (!priorizado) return;
+  const curId = (r as any)?.status_id ?? null;
+  const cur = statuses.find((s) => s.id === curId);
+  // Sólo promovemos cuando aún no tiene estado o está en "Nuevo".
+  if (curId && norm(cur?.name ?? "") !== "nuevo") return;
   await changeStatus(supabase, requirementId, priorizado.id, authorId, "Priorizado automáticamente al asignar a un sprint");
 }
 
@@ -707,6 +713,7 @@ export async function quickAddTask(title: string) {
   const uid = await currentProfileId();
   const { error } = await supabase.from("tasks").insert({ project_id: await getProjectId(), title: t, created_by: uid });
   if (error) return { ok: false, error: error.message };
+  clearReadCache();
   revalidatePath("/tareas");
   return { ok: true };
 }
@@ -732,6 +739,7 @@ export async function saveTask(payload: {
     const { error } = await supabase.from("tasks").insert({ ...values, project_id: await getProjectId(), created_by: uid });
     if (error) return { ok: false, error: error.message };
   }
+  clearReadCache();
   revalidatePath("/tareas");
   return { ok: true };
 }
@@ -740,6 +748,7 @@ export async function toggleTask(id: string, done: boolean) {
   const supabase = createClient();
   const { error } = await supabase.from("tasks").update({ done, done_at: done ? new Date().toISOString() : null }).eq("id", id);
   if (error) return { ok: false, error: error.message };
+  clearReadCache();
   revalidatePath("/tareas");
   return { ok: true };
 }
@@ -748,6 +757,7 @@ export async function deleteTask(id: string) {
   const supabase = createClient();
   const { error } = await supabase.from("tasks").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
+  clearReadCache();
   revalidatePath("/tareas");
   return { ok: true };
 }

@@ -9,6 +9,7 @@ export function StatCard({
   icon,
   accent = "#1E5EFF",
   className,
+  compact = false,
 }: {
   label: string;
   value: React.ReactNode;
@@ -16,18 +17,20 @@ export function StatCard({
   icon?: React.ReactNode;
   accent?: string;
   className?: string;
+  /** Versión más chica para dashboards densos (menos padding y tipografía). */
+  compact?: boolean;
 }) {
   return (
-    <Card className={cn("p-5", className)}>
+    <Card className={cn(compact ? "p-3.5" : "p-5", className)}>
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted">{label}</p>
-          <p className="mt-2 text-2xl font-semibold text-ink tabular">{value}</p>
-          {hint && <p className="mt-1 text-xs text-muted">{hint}</p>}
+          <p className={cn("font-medium uppercase tracking-wide text-muted", compact ? "text-[11px]" : "text-xs")}>{label}</p>
+          <p className={cn("font-semibold text-ink tabular", compact ? "mt-1 text-xl" : "mt-2 text-2xl")}>{value}</p>
+          {hint && <p className="mt-0.5 text-xs text-muted">{hint}</p>}
         </div>
         {icon && (
           <div
-            className="flex h-10 w-10 items-center justify-center rounded-xl"
+            className={cn("flex items-center justify-center rounded-xl", compact ? "h-8 w-8" : "h-10 w-10")}
             style={{ backgroundColor: `${accent}14`, color: accent }}
           >
             {icon}

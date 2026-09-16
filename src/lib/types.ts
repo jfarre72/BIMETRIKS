@@ -113,6 +113,15 @@ export interface RequirementNote {
   author?: Profile | null;
 }
 
+export interface ChecklistItem {
+  id: string;
+  requirement_id: string;
+  text: string;
+  done: boolean;
+  sort_index: number;
+  created_at: string;
+}
+
 export interface Attachment {
   id: string;
   requirement_id: string;
