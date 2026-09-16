@@ -4,7 +4,7 @@ import { formatHours, pct } from "@/lib/utils";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/ui/stat-card";
 import { HoursDonut } from "@/components/dashboard/hours-donut";
-import { StatusDonut } from "@/components/dashboard/status-donut";
+import { StatusFlow } from "@/components/dashboard/status-flow";
 import { HourBlocksChart } from "@/components/dashboard/hour-blocks-chart";
 
 export const dynamic = "force-dynamic";
@@ -36,10 +36,10 @@ export default async function DashboardPage() {
         <StatCard label="Pendientes de asignar" value={unassignedReqs} hint={`${pct(unassignedReqs, totalReqs)}% del total`} icon={<Inbox size={18} />} accent="#CA8A04" />
       </div>
 
-      {/* Torta de utilización + torta de estados */}
+      {/* Torta de utilización + flujo de estados */}
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <HoursDonut consumed={hours.consumed} available={hours.available} />
-        <StatusDonut data={byStatus} total={requirements.length} />
+        <StatusFlow data={byStatus} total={requirements.length} />
       </div>
 
       {/* Horas por bloque */}
