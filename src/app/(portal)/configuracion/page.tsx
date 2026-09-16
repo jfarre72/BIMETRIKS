@@ -14,7 +14,7 @@ export default async function ConfiguracionPage() {
     supabase.from("req_statuses").select("id,name,color,is_final,sort_order").eq("project_id", PROJECT_ID).order("sort_order"),
     supabase.from("req_priorities").select("id,name,color,weight").eq("project_id", PROJECT_ID).order("weight", { ascending: false }),
     supabase.from("req_types").select("id,name,color").eq("project_id", PROJECT_ID).order("name"),
-    supabase.from("people").select("id,name,role").eq("project_id", PROJECT_ID).order("sort_order").order("name"),
+    supabase.from("people").select("id,name,role,company").eq("project_id", PROJECT_ID).order("sort_order").order("name"),
     supabase.from("dashboards").select("id,name,sort_order").eq("project_id", PROJECT_ID).order("sort_order"),
   ]);
 

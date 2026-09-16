@@ -47,7 +47,7 @@ async function _getCatalogs(): Promise<Catalogs> {
     supabase.from("req_statuses").select("id,name,color,is_final,sort_order").eq("project_id", PROJECT_ID).order("sort_order"),
     supabase.from("req_priorities").select("id,name,color,weight").eq("project_id", PROJECT_ID).order("weight", { ascending: false }),
     supabase.from("req_types").select("id,name,color").eq("project_id", PROJECT_ID).order("name"),
-    supabase.from("people").select("id,name,role,sort_order").eq("project_id", PROJECT_ID).order("sort_order").order("name"),
+    supabase.from("people").select("id,name,role,company,sort_order").eq("project_id", PROJECT_ID).order("sort_order").order("name"),
     supabase.from("sprints").select("id,name,status").eq("project_id", PROJECT_ID).is("archived_at", null).order("created_at", { ascending: false }),
     supabase.from("dashboards").select("name,sort_order").eq("project_id", PROJECT_ID).order("sort_order"),
   ]);
@@ -276,7 +276,7 @@ export async function getPeople() {
   const PROJECT_ID = await getProjectId();
   const { data } = await supabase
     .from("people")
-    .select("id,name,role,sort_order")
+    .select("id,name,role,company,sort_order")
     .eq("project_id", PROJECT_ID)
     .order("sort_order")
     .order("name");

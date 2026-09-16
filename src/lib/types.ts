@@ -32,6 +32,7 @@ export interface Person {
   id: string;
   name: string;
   role: string | null;
+  company?: string | null;
   sort_order?: number;
 }
 

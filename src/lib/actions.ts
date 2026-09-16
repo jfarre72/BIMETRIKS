@@ -730,11 +730,11 @@ export async function deleteRequirementNote(id: string, requirementId: string) {
 // ---------------------------------------------------------------------------
 // Responsables (people)
 // ---------------------------------------------------------------------------
-export async function upsertPerson(payload: { id?: string; name: string; role?: string }) {
+export async function upsertPerson(payload: { id?: string; name: string; role?: string; company?: string }) {
   const name = payload.name?.trim();
   if (!name) return { ok: false, error: "El nombre es obligatorio" };
   const supabase = createClient();
-  const values = { name, role: payload.role?.trim() || null };
+  const values = { name, role: payload.role?.trim() || null, company: payload.company?.trim() || null };
   if (payload.id) {
     const { error } = await supabase.from("people").update(values).eq("id", payload.id);
     if (error) return { ok: false, error: error.message };

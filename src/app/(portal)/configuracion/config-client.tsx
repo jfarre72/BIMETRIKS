@@ -10,7 +10,7 @@ import { upsertCatalogItem, deleteCatalogItem, moveCatalogItem, type CatalogKind
 import { upsertPerson, deletePerson } from "@/lib/actions";
 
 export type CatalogRow = { id: string; name: string; color?: string; is_final?: boolean; order: number };
-export type PersonRow = { id: string; name: string; role: string | null };
+export type PersonRow = { id: string; name: string; role: string | null; company?: string | null };
 
 type Data = Record<CatalogKind, CatalogRow[]>;
 type View = "people" | "definitions" | CatalogKind;
@@ -215,16 +215,17 @@ function PeopleManager({ people }: { people: PersonRow[] }) {
   const [editing, setEditing] = useState<PersonRow | null>(null);
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
+  const [company, setCompany] = useState("");
   const [saving, setSaving] = useState(false);
   const [, startTransition] = useTransition();
 
-  function openNew() { setEditing(null); setName(""); setRole(""); setOpen(true); }
-  function openEdit(p: PersonRow) { setEditing(p); setName(p.name); setRole(p.role ?? ""); setOpen(true); }
+  function openNew() { setEditing(null); setName(""); setRole(""); setCompany(""); setOpen(true); }
+  function openEdit(p: PersonRow) { setEditing(p); setName(p.name); setRole(p.role ?? ""); setCompany(p.company ?? ""); setOpen(true); }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    await upsertPerson({ id: editing?.id, name, role });
+    await upsertPerson({ id: editing?.id, name, role, company });
     setSaving(false);
     setOpen(false);
     router.refresh();
@@ -249,6 +250,7 @@ function PeopleManager({ people }: { people: PersonRow[] }) {
               <li key={p.id} className="flex items-center gap-3 py-2.5">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand/10 text-xs font-semibold text-brand">{p.name.slice(0, 1).toUpperCase()}</span>
                 <span className="flex-1 text-sm font-medium text-ink">{p.name}</span>
+                {p.company && <Badge color="#0B1E3F">{p.company}</Badge>}
                 {p.role && <Badge>{p.role}</Badge>}
                 <button onClick={() => openEdit(p)} className="rounded-lg p-1.5 text-muted hover:bg-canvas hover:text-ink"><Pencil size={15} /></button>
                 <button onClick={() => remove(p)} className="rounded-lg p-1.5 text-muted hover:bg-red-50 hover:text-red-600"><Trash2 size={15} /></button>
@@ -260,6 +262,7 @@ function PeopleManager({ people }: { people: PersonRow[] }) {
         <Modal open={open} onClose={() => setOpen(false)} title={editing ? "Editar responsable" : "Nuevo responsable"}>
           <form onSubmit={save} className="space-y-3">
             <div><Label>Nombre</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Juan Farré" autoFocus required /></div>
+            <div><Label>Empresa</Label><Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="BiMetriks, Samboro…" /></div>
             <div><Label>Rol / Área</Label><Input value={role} onChange={(e) => setRole(e.target.value)} placeholder="BI, Logística, Costos…" /></div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}><X size={15} /> Cancelar</Button>
