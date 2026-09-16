@@ -32,6 +32,7 @@ export interface Person {
   id: string;
   name: string;
   role: string | null;
+  company?: string | null;
   sort_order?: number;
 }
 
@@ -52,6 +53,7 @@ export interface Requirement {
   title: string;
   description: string | null;
   module: string | null;
+  dashboard: string | null;
   estimated_hours: number;
   observations: string | null;
   sort_index?: number;
@@ -61,6 +63,7 @@ export interface Requirement {
   status_id: string | null;
   assignee_id: string | null;
   validator_id: string | null;
+  created_by?: string | null;
   created_at: string;
   updated_at: string;
   // joins
@@ -70,6 +73,7 @@ export interface Requirement {
   status?: ReqStatus | null;
   assignee?: Person | null;
   validator?: Person | null;
+  creator?: { id: string; username: string; full_name: string | null; role: string } | null;
   consumed_hours?: number;
   sprint?: { id: string; name: string } | null;
 }
@@ -139,4 +143,5 @@ export interface Catalogs {
   types: ReqType[];
   people: Person[];
   sprints: Pick<Sprint, "id" | "name" | "status">[];
+  dashboards: string[];
 }

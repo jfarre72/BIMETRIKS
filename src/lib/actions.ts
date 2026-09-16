@@ -14,6 +14,15 @@ async function currentProfileId(): Promise<string | null> {
   return user?.id ?? null;
 }
 
+/** Rol del usuario autenticado (ADMIN | CONSULTANT | CLIENT | null). */
+async function currentProfileRole(): Promise<string | null> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  return (data as any)?.role ?? null;
+}
+
 const emptyToNull = (v: unknown) => (v === "" || v === undefined ? null : v);
 
 // ---------------------------------------------------------------------------
@@ -24,6 +33,7 @@ const requirementSchema = z.object({
   title: z.string().min(1, "El título es obligatorio"),
   description: z.preprocess(emptyToNull, z.string().nullable()),
   module: z.preprocess(emptyToNull, z.string().nullable()),
+  dashboard: z.preprocess(emptyToNull, z.string().nullable()),
   area_id: z.preprocess(emptyToNull, z.string().uuid().nullable()),
   type_id: z.preprocess(emptyToNull, z.string().uuid().nullable()),
   priority_id: z.preprocess(emptyToNull, z.string().uuid().nullable()),
@@ -59,6 +69,7 @@ const REQ_FIELD_META: Record<string, { label: string; table?: string }> = {
   title: { label: "Título" },
   description: { label: "Descripción" },
   module: { label: "Módulo" },
+  dashboard: { label: "Dashboard" },
   area_id: { label: "Área", table: "areas" },
   type_id: { label: "Tipo", table: "req_types" },
   priority_id: { label: "Prioridad", table: "req_priorities" },
@@ -222,6 +233,28 @@ async function maybePrioritizeOnSprint(supabase: any, requirementId: string, aut
   await changeStatus(supabase, requirementId, priorizado.id, authorId, "Priorizado automáticamente al asignar a un sprint");
 }
 
+/** Garantiza que el dashboard exista en el catálogo (lo agrega si es nuevo). */
+async function ensureDashboard(supabase: any, name: string | null | undefined): Promise<void> {
+  const value = (name ?? "").trim();
+  if (!value) return;
+  const projectId = await getProjectId();
+  const { data: existing } = await supabase
+    .from("dashboards")
+    .select("id")
+    .eq("project_id", projectId)
+    .ilike("name", value)
+    .limit(1);
+  if (existing && existing.length > 0) return;
+  const { data: last } = await supabase
+    .from("dashboards")
+    .select("sort_order")
+    .eq("project_id", projectId)
+    .order("sort_order", { ascending: false })
+    .limit(1);
+  const sort_order = Number((last?.[0] as any)?.sort_order ?? 0) + 1;
+  await supabase.from("dashboards").insert({ project_id: projectId, name: value, sort_order });
+}
+
 export async function saveRequirement(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
   const parsed = requirementSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
@@ -229,8 +262,32 @@ export async function saveRequirement(_prev: ActionResult | null, formData: Form
   }
   const supabase = createClient();
   const uid = await currentProfileId();
-  const { id, sprint_id, ...values } = parsed.data;
-  const sprintProvided = "sprint_id" in parsed.data;
+  const role = await currentProfileRole();
+  const isClient = role === "CLIENT";
+  let { id, sprint_id, ...values } = parsed.data;
+  let sprintProvided = "sprint_id" in parsed.data;
+
+  // El CLIENT sólo puede CREAR (nunca editar/priorizar). Se ignoran los campos
+  // de gestión y el requerimiento arranca en "Nuevo" para que el staff lo priorice.
+  if (isClient) {
+    if (id) return { ok: false, error: "No tenés permisos para editar requerimientos." };
+    const statuses = await getProjectStatuses(supabase);
+    const nuevo = statuses.find((s) => norm(s.name) === "nuevo");
+    values = {
+      ...values,
+      type_id: null,
+      priority_id: null,
+      status_id: nuevo?.id ?? null,
+      assignee_id: null,
+      validator_id: null,
+      estimated_hours: 0,
+    };
+    sprint_id = null;
+    sprintProvided = false;
+  }
+
+  // Si el dashboard indicado es nuevo, lo agregamos al catálogo.
+  await ensureDashboard(supabase, values.dashboard);
 
   if (id) {
     // Estado previo, para registrar en el historial qué cambió.
@@ -673,11 +730,11 @@ export async function deleteRequirementNote(id: string, requirementId: string) {
 // ---------------------------------------------------------------------------
 // Responsables (people)
 // ---------------------------------------------------------------------------
-export async function upsertPerson(payload: { id?: string; name: string; role?: string }) {
+export async function upsertPerson(payload: { id?: string; name: string; role?: string; company?: string }) {
   const name = payload.name?.trim();
   if (!name) return { ok: false, error: "El nombre es obligatorio" };
   const supabase = createClient();
-  const values = { name, role: payload.role?.trim() || null };
+  const values = { name, role: payload.role?.trim() || null, company: payload.company?.trim() || null };
   if (payload.id) {
     const { error } = await supabase.from("people").update(values).eq("id", payload.id);
     if (error) return { ok: false, error: error.message };

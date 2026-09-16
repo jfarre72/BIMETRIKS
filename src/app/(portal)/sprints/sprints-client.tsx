@@ -19,11 +19,13 @@ export function SprintsClient({
   requirements,
   statuses,
   archived = [],
+  canManage = true,
 }: {
   sprints: Sprint[];
   requirements: Requirement[];
   statuses: Catalogs["statuses"];
   archived?: Sprint[];
+  canManage?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -61,7 +63,7 @@ export function SprintsClient({
       <PageHeader
         title="Sprints"
         subtitle="Bloques de trabajo — desplegá para ver y cambiar el estado de cada requerimiento"
-        actions={<Button onClick={() => setOpen(true)}><Plus size={16} /> Nuevo sprint</Button>}
+        actions={canManage ? <Button onClick={() => setOpen(true)}><Plus size={16} /> Nuevo sprint</Button> : undefined}
       />
 
       {sprints.length === 0 ? (

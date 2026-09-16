@@ -13,8 +13,8 @@ import type {
 // Query única de requerimiento: catálogos, horas consumidas (time_entries embebidas)
 // y sprint asignado, todo en una sola llamada a la base.
 const REQ_SELECT = `
-  id, code, title, description, module, estimated_hours, observations, sort_index,
-  area_id, type_id, priority_id, status_id, assignee_id, validator_id,
+  id, code, title, description, module, dashboard, estimated_hours, observations, sort_index,
+  area_id, type_id, priority_id, status_id, assignee_id, validator_id, created_by,
   created_at, updated_at,
   area:areas(id,name),
   type:req_types(id,name,color),
@@ -22,6 +22,7 @@ const REQ_SELECT = `
   status:req_statuses(id,name,color,is_final),
   assignee:people!requirements_assignee_id_fkey(id,name,role),
   validator:people!requirements_validator_id_fkey(id,name,role),
+  creator:profiles!requirements_created_by_fkey(id,username,full_name,role),
   time_entries(hours),
   sprint_requirements(sprint:sprints(id,name))
 `;
@@ -41,13 +42,14 @@ export async function getCatalogs(): Promise<Catalogs> {
 async function _getCatalogs(): Promise<Catalogs> {
   const supabase = createClient();
   const PROJECT_ID = await getProjectId();
-  const [areas, statuses, priorities, types, people, sprints] = await Promise.all([
+  const [areas, statuses, priorities, types, people, sprints, dashboards] = await Promise.all([
     supabase.from("areas").select("id,name,sort_order").eq("project_id", PROJECT_ID).order("sort_order"),
     supabase.from("req_statuses").select("id,name,color,is_final,sort_order").eq("project_id", PROJECT_ID).order("sort_order"),
     supabase.from("req_priorities").select("id,name,color,weight").eq("project_id", PROJECT_ID).order("weight", { ascending: false }),
     supabase.from("req_types").select("id,name,color").eq("project_id", PROJECT_ID).order("name"),
-    supabase.from("people").select("id,name,role,sort_order").eq("project_id", PROJECT_ID).order("sort_order").order("name"),
+    supabase.from("people").select("id,name,role,company,sort_order").eq("project_id", PROJECT_ID).order("sort_order").order("name"),
     supabase.from("sprints").select("id,name,status").eq("project_id", PROJECT_ID).is("archived_at", null).order("created_at", { ascending: false }),
+    supabase.from("dashboards").select("name,sort_order").eq("project_id", PROJECT_ID).order("sort_order"),
   ]);
   return {
     areas: areas.data ?? [],
@@ -56,6 +58,7 @@ async function _getCatalogs(): Promise<Catalogs> {
     types: (types.data as any) ?? [],
     people: (people.data as any) ?? [],
     sprints: (sprints.data as any) ?? [],
+    dashboards: (dashboards.data as any[] ?? []).map((d) => d.name as string),
   };
 }
 
@@ -106,6 +109,26 @@ export async function getAttachments(reqId: string) {
     ...a,
     url: supabase.storage.from("attachments").getPublicUrl(a.path).data.publicUrl,
   }));
+}
+
+export interface CurrentProfile {
+  id: string;
+  username: string;
+  full_name: string | null;
+  role: "ADMIN" | "CONSULTANT" | "CLIENT";
+}
+
+/** Perfil del usuario autenticado (con su rol). null si no hay sesión. */
+export async function getCurrentProfile(): Promise<CurrentProfile | null> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from("profiles")
+    .select("id,username,full_name,role")
+    .eq("id", user.id)
+    .single();
+  return (data as any) ?? null;
 }
 
 export async function getChecklist(reqId: string) {
@@ -253,7 +276,7 @@ export async function getPeople() {
   const PROJECT_ID = await getProjectId();
   const { data } = await supabase
     .from("people")
-    .select("id,name,role,sort_order")
+    .select("id,name,role,company,sort_order")
     .eq("project_id", PROJECT_ID)
     .order("sort_order")
     .order("name");

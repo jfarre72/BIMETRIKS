@@ -29,15 +29,26 @@ const NAV = [
   { href: "/sprints", label: "Sprints", icon: Layers },
   { href: "/tracking", label: "Tracking", icon: Activity },
   { href: "/horas", label: "Horas", icon: Clock },
-  { href: "/facturacion", label: "Facturación", icon: Receipt },
-  { href: "/reporteria", label: "Reportería", icon: BarChart3 },
-  { href: "/documentacion", label: "Documentación", icon: FolderOpen },
-  { href: "/configuracion", label: "Configuración", icon: Settings },
+  { href: "/facturacion", label: "Facturación", icon: Receipt, staffOnly: true },
+  { href: "/reporteria", label: "Reportería", icon: BarChart3, staffOnly: true },
+  { href: "/documentacion", label: "Documentación", icon: FolderOpen, staffOnly: true },
+  { href: "/configuracion", label: "Configuración", icon: Settings, staffOnly: true },
 ];
 
-export function Sidebar({ user, clientName }: { user: { name: string; username: string }; clientName?: string }) {
+export function Sidebar({
+  user,
+  clientName,
+  role = "CLIENT",
+}: {
+  user: { name: string; username: string };
+  clientName?: string;
+  role?: string;
+}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+  const isStaff = role === "ADMIN" || role === "CONSULTANT";
+  const nav = NAV.filter((item) => isStaff || !item.staffOnly);
 
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
@@ -74,7 +85,7 @@ export function Sidebar({ user, clientName }: { user: { name: string; username: 
         )}
 
         <nav className="flex-1 space-y-0.5 px-3 pt-1">
-          {NAV.map(({ href, label, icon: Icon }) => (
+          {nav.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}

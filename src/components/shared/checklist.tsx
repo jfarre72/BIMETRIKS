@@ -14,9 +14,12 @@ import type { ChecklistItem } from "@/lib/types";
 export function Checklist({
   requirementId,
   initial,
+  readOnly = false,
 }: {
   requirementId: string;
   initial: ChecklistItem[];
+  /** Rol CLIENT: sólo puede ver el checklist, no modificarlo. */
+  readOnly?: boolean;
 }) {
   const supabase = createClient();
   const [items, setItems] = useState<ChecklistItem[]>(initial);
@@ -48,6 +51,7 @@ export function Checklist({
   }
 
   async function toggle(item: ChecklistItem) {
+    if (readOnly) return;
     const next = !item.done;
     setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, done: next } : i)));
     await supabase
@@ -84,24 +88,32 @@ export function Checklist({
               type="checkbox"
               checked={item.done}
               onChange={() => toggle(item)}
-              className="h-4 w-4 rounded border-line text-brand focus:ring-brand/30"
+              disabled={readOnly}
+              className="h-4 w-4 rounded border-line text-brand focus:ring-brand/30 disabled:opacity-60"
             />
             <span className={`flex-1 text-sm ${item.done ? "text-muted line-through" : "text-ink"}`}>{item.text}</span>
-            <button
-              onClick={() => remove(item)}
-              className="rounded-lg p-1 text-muted opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 group-hover:opacity-100"
-              aria-label="Eliminar ítem"
-            >
-              <Trash2 size={14} />
-            </button>
+            {!readOnly && (
+              <button
+                onClick={() => remove(item)}
+                className="rounded-lg p-1 text-muted opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 group-hover:opacity-100"
+                aria-label="Eliminar ítem"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
           </li>
         ))}
       </ul>
 
-      <form onSubmit={add} className="mt-3 flex gap-2">
-        <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Agregar ítem al checklist…" />
-        <Button type="submit" variant="secondary"><Plus size={16} /> Agregar</Button>
-      </form>
+      {!readOnly && (
+        <form onSubmit={add} className="mt-3 flex gap-2">
+          <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Agregar ítem al checklist…" />
+          <Button type="submit" variant="secondary"><Plus size={16} /> Agregar</Button>
+        </form>
+      )}
+      {readOnly && items.length === 0 && (
+        <p className="text-sm text-muted">Sin ítems.</p>
+      )}
     </div>
   );
 }

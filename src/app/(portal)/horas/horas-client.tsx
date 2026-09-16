@@ -21,12 +21,14 @@ export function HorasClient({
   entries,
   requirements,
   sprints,
+  canManage = true,
 }: {
   hours: { contracted: number; consumed: number; available: number };
   contracted: ContractedHours[];
   entries: TimeEntry[];
   requirements: MiniReq[];
   sprints: MiniSprint[];
+  canManage?: boolean;
 }) {
   const router = useRouter();
   const [entryOpen, setEntryOpen] = useState(false);
@@ -72,10 +74,12 @@ export function HorasClient({
         title="Horas"
         subtitle="Gestión de horas contratadas y utilizadas"
         actions={
-          <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => setContractOpen(true)}><FilePlus2 size={16} /> Horas contratadas</Button>
-            <Button onClick={() => setEntryOpen(true)}><Plus size={16} /> Registrar horas</Button>
-          </div>
+          canManage ? (
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={() => setContractOpen(true)}><FilePlus2 size={16} /> Horas contratadas</Button>
+              <Button onClick={() => setEntryOpen(true)}><Plus size={16} /> Registrar horas</Button>
+            </div>
+          ) : undefined
         }
       />
 
@@ -121,9 +125,11 @@ export function HorasClient({
                         </td>
                         <td className="px-3 py-2.5 text-right tabular font-medium">{formatHours(e.hours)}</td>
                         <td className="pr-2 text-right">
-                          <button onClick={() => onDeleteEntry(e.id)} className="rounded p-1 text-muted opacity-0 hover:bg-red-50 hover:text-red-600 group-hover:opacity-100" aria-label="Eliminar">
-                            <Trash2 size={14} />
-                          </button>
+                          {canManage && (
+                            <button onClick={() => onDeleteEntry(e.id)} className="rounded p-1 text-muted opacity-0 hover:bg-red-50 hover:text-red-600 group-hover:opacity-100" aria-label="Eliminar">
+                              <Trash2 size={14} />
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -162,12 +168,16 @@ export function HorasClient({
                       <td className="px-3 py-2.5">{c.note ?? "—"}</td>
                       <td className="px-3 py-2.5 text-right tabular font-medium text-green-600">+{formatHours(c.hours)}</td>
                       <td className="whitespace-nowrap pr-2 text-right">
-                        <button onClick={() => setEditContract(c)} className="rounded p-1 text-muted opacity-0 hover:bg-canvas hover:text-ink group-hover:opacity-100" aria-label="Editar">
-                          <Pencil size={14} />
-                        </button>
-                        <button onClick={() => onDeleteContracted(c.id)} className="rounded p-1 text-muted opacity-0 hover:bg-red-50 hover:text-red-600 group-hover:opacity-100" aria-label="Eliminar">
-                          <Trash2 size={14} />
-                        </button>
+                        {canManage && (
+                          <>
+                            <button onClick={() => setEditContract(c)} className="rounded p-1 text-muted opacity-0 hover:bg-canvas hover:text-ink group-hover:opacity-100" aria-label="Editar">
+                              <Pencil size={14} />
+                            </button>
+                            <button onClick={() => onDeleteContracted(c.id)} className="rounded p-1 text-muted opacity-0 hover:bg-red-50 hover:text-red-600 group-hover:opacity-100" aria-label="Eliminar">
+                              <Trash2 size={14} />
+                            </button>
+                          </>
+                        )}
                       </td>
                     </tr>
                   ))}

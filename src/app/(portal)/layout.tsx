@@ -11,7 +11,7 @@ export default async function PortalLayout({ children }: { children: React.React
   if (!user) redirect("/login");
 
   const [{ data: profile }, clientName] = await Promise.all([
-    supabase.from("profiles").select("username, full_name").eq("id", user.id).single(),
+    supabase.from("profiles").select("username, full_name, role").eq("id", user.id).single(),
     getClientName(),
   ]);
 
@@ -19,10 +19,11 @@ export default async function PortalLayout({ children }: { children: React.React
     name: profile?.full_name || profile?.username || "Usuario",
     username: profile?.username || "usuario",
   };
+  const role = (profile?.role as string) ?? "CLIENT";
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas lg:flex-row">
-      <Sidebar user={display} clientName={clientName} />
+      <Sidebar user={display} clientName={clientName} role={role} />
       <main className="flex-1 overflow-x-hidden">
         <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">{children}</div>
       </main>

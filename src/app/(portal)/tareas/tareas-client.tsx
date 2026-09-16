@@ -21,7 +21,7 @@ function estado(t: Task): { label: string; color: string } {
   return { label: "Pendiente", color: "#CA8A04" };
 }
 
-export function TareasClient({ tasks, people }: { tasks: Task[]; people: string[] }) {
+export function TareasClient({ tasks, people, canManage = true }: { tasks: Task[]; people: string[]; canManage?: boolean }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [filter, setFilter] = useState<Filter>("abiertas");
@@ -67,6 +67,7 @@ export function TareasClient({ tasks, people }: { tasks: Task[]; people: string[
     });
   }
   function onToggle(t: Task) {
+    if (!canManage) return;
     setItems((prev) => prev.map((x) => (x.id === t.id ? { ...x, done: !x.done } : x)));
     startTransition(async () => {
       await toggleTask(t.id, !t.done);
@@ -74,6 +75,7 @@ export function TareasClient({ tasks, people }: { tasks: Task[]; people: string[
     });
   }
   function onDelete(t: Task) {
+    if (!canManage) return;
     if (!confirm("¿Eliminar esta tarea?")) return;
     setItems((prev) => prev.filter((x) => x.id !== t.id));
     startTransition(async () => {
@@ -103,11 +105,15 @@ export function TareasClient({ tasks, people }: { tasks: Task[]; people: string[
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <Input className="pl-9" placeholder="Buscar…" value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
-          <form onSubmit={onQuickAdd} className="flex flex-1 gap-2">
-            <Input placeholder="Agregar tema rápido…" value={quick} onChange={(e) => setQuick(e.target.value)} />
-            <Button type="submit" variant="secondary"><Plus size={16} /> Agregar</Button>
-          </form>
-          <Button onClick={() => { setEditing(null); setFormOpen(true); }}><Plus size={16} /> Nueva tarea</Button>
+          {canManage && (
+            <>
+              <form onSubmit={onQuickAdd} className="flex flex-1 gap-2">
+                <Input placeholder="Agregar tema rápido…" value={quick} onChange={(e) => setQuick(e.target.value)} />
+                <Button type="submit" variant="secondary"><Plus size={16} /> Agregar</Button>
+              </form>
+              <Button onClick={() => { setEditing(null); setFormOpen(true); }}><Plus size={16} /> Nueva tarea</Button>
+            </>
+          )}
         </div>
       </Card>
 
@@ -135,7 +141,7 @@ export function TareasClient({ tasks, people }: { tasks: Task[]; people: string[
                   return (
                     <tr key={t.id} className="border-b border-line last:border-0 hover:bg-canvas/40">
                       <td className="py-2 pl-3">
-                        <input type="checkbox" checked={t.done} onChange={() => onToggle(t)} className="h-4 w-4 rounded border-line text-brand focus:ring-brand/30" />
+                        <input type="checkbox" checked={t.done} onChange={() => onToggle(t)} disabled={!canManage} className="h-4 w-4 rounded border-line text-brand focus:ring-brand/30 disabled:opacity-60" />
                       </td>
                       <td className="px-2 py-2 text-center text-xs tabular text-muted">{i + 1}</td>
                       <td className="px-2 py-2">
@@ -147,8 +153,12 @@ export function TareasClient({ tasks, people }: { tasks: Task[]; people: string[
                       <td className="whitespace-nowrap px-2 py-2 text-muted">{t.due_date ? formatDate(t.due_date) : "—"}</td>
                       <td className="px-2 py-2"><Badge color={st.color}>{st.label}</Badge></td>
                       <td className="whitespace-nowrap px-2 py-2 text-right">
-                        <button onClick={() => { setEditing(t); setFormOpen(true); }} className="rounded-lg p-1 text-muted hover:bg-canvas hover:text-ink"><Pencil size={15} /></button>
-                        <button onClick={() => onDelete(t)} className="rounded-lg p-1 text-muted hover:bg-red-50 hover:text-red-600"><Trash2 size={15} /></button>
+                        {canManage && (
+                          <>
+                            <button onClick={() => { setEditing(t); setFormOpen(true); }} className="rounded-lg p-1 text-muted hover:bg-canvas hover:text-ink"><Pencil size={15} /></button>
+                            <button onClick={() => onDelete(t)} className="rounded-lg p-1 text-muted hover:bg-red-50 hover:text-red-600"><Trash2 size={15} /></button>
+                          </>
+                        )}
                       </td>
                     </tr>
                   );

@@ -10,16 +10,17 @@ import { upsertCatalogItem, deleteCatalogItem, moveCatalogItem, type CatalogKind
 import { upsertPerson, deletePerson } from "@/lib/actions";
 
 export type CatalogRow = { id: string; name: string; color?: string; is_final?: boolean; order: number };
-export type PersonRow = { id: string; name: string; role: string | null };
+export type PersonRow = { id: string; name: string; role: string | null; company?: string | null };
 
 type Data = Record<CatalogKind, CatalogRow[]>;
-type View = "people" | CatalogKind;
+type View = "people" | "definitions" | CatalogKind;
 
 const CATALOG_TABS: { key: CatalogKind; label: string; hasColor: boolean; ordered: boolean }[] = [
   { key: "req_statuses", label: "Estados", hasColor: true, ordered: true },
   { key: "req_priorities", label: "Prioridades", hasColor: true, ordered: true },
   { key: "req_types", label: "Tipos", hasColor: true, ordered: false },
   { key: "areas", label: "Áreas / Capítulos", hasColor: false, ordered: true },
+  { key: "dashboards", label: "Dashboards", hasColor: false, ordered: true },
 ];
 
 export function ConfigClient({ data, people }: { data: Data; people: PersonRow[] }) {
@@ -30,9 +31,11 @@ export function ConfigClient({ data, people }: { data: Data; people: PersonRow[]
   const [isPending, startTransition] = useTransition();
 
   const isPeople = view === "people";
+  const isDefinitions = view === "definitions";
+  const isCatalog = !isPeople && !isDefinitions;
   const tab = view as CatalogKind;
-  const active = CATALOG_TABS.find((t) => t.key === tab);
-  const rows = isPeople ? [] : data[tab];
+  const active = isCatalog ? CATALOG_TABS.find((t) => t.key === tab) : undefined;
+  const rows = isCatalog ? data[tab] : [];
 
   function onDelete(row: CatalogRow) {
     if (!confirm(`¿Eliminar "${row.name}"?`)) return;
@@ -54,7 +57,7 @@ export function ConfigClient({ data, people }: { data: Data; people: PersonRow[]
         title="Configuración"
         subtitle="Responsables y catálogos: estados, prioridades, tipos y áreas"
         actions={
-          !isPeople && <Button onClick={() => { setEditing(null); setFormOpen(true); }}><Plus size={16} /> Nuevo</Button>
+          isCatalog && <Button onClick={() => { setEditing(null); setFormOpen(true); }}><Plus size={16} /> Nuevo</Button>
         }
       />
 
@@ -64,10 +67,13 @@ export function ConfigClient({ data, people }: { data: Data; people: PersonRow[]
         {CATALOG_TABS.map((t) => (
           <TabBtn key={t.key} active={view === t.key} onClick={() => setView(t.key)}>{t.label}</TabBtn>
         ))}
+        <TabBtn active={isDefinitions} onClick={() => setView("definitions")}>Definiciones</TabBtn>
       </div>
 
       {isPeople ? (
         <PeopleManager people={people} />
+      ) : isDefinitions ? (
+        <DefinitionsPanel />
       ) : (
         <Card>
           <CardBody>
@@ -113,6 +119,88 @@ export function ConfigClient({ data, people }: { data: Data; people: PersonRow[]
   );
 }
 
+// Reglas de negocio vigentes del portal (documentación viva para el equipo).
+const DEFINITIONS: { title: string; rules: string[] }[] = [
+  {
+    title: "Flujo de estados de un requerimiento",
+    rules: [
+      "Los estados y su orden se definen en la solapa «Estados». El flujo va de izquierda a derecha respetando ese orden.",
+      "Un requerimiento nuevo arranca en «Nuevo».",
+      "Al asignarlo a un sprint (o si estaba sin estado), pasa automáticamente a «Priorizado».",
+      "Al cargar horas estimadas, pasa a «Estimado» (si su estado era anterior en el flujo).",
+      "Al llevarlo a un estado final (p. ej. «Finalizado»), se piden las horas reales, que quedan registradas.",
+      "Un estado marcado como «final» cuenta como Finalizado para las métricas del sprint.",
+    ],
+  },
+  {
+    title: "Sprints",
+    rules: [
+      "El estado del sprint se recalcula solo: sin requerimientos → «Planificado»; con requerimientos → «Activo»; todos finalizados → «Finalizado».",
+      "«Pausado» es manual y no se pisa automáticamente.",
+    ],
+  },
+  {
+    title: "Horas",
+    rules: [
+      "El consumo se imputa FIFO: primero se agota el bloque de horas contratadas más antiguo.",
+      "En el backlog, la columna «Util.» son las horas utilizadas (consumidas).",
+    ],
+  },
+  {
+    title: "Perfiles y accesos",
+    rules: [
+      "Staff (ADMIN / CONSULTANT, BiMetriks): acceso total a todas las secciones.",
+      "Cliente (CLIENT, Samboro): sólo VE Inicio, Tareas, Backlog, Sprints, Tracking y Horas.",
+      "El cliente NO accede a Facturación, Reportería, Documentación ni Configuración.",
+      "El cliente sólo puede crear requerimientos; no puede editarlos ni priorizarlos.",
+    ],
+  },
+  {
+    title: "Requerimientos del cliente",
+    rules: [
+      "Se cargan con un formulario reducido: Título, Área, Página/Módulo, Dashboard, Descripción y Observaciones.",
+      "Arrancan en estado «Nuevo», sin sprint y sin horas estimadas. El staff los prioriza.",
+      "Se registra quién creó cada requerimiento y se muestra en el detalle («Creado por»).",
+      "El color/etiqueta de origen distingue: Samboro (ámbar) vs BiMetriks (navy), con una barra a la izquierda de cada fila.",
+      "El campo «Dashboard» indica en qué dashboard y página se quiere el requerimiento.",
+    ],
+  },
+  {
+    title: "Otros",
+    rules: [
+      "Cada requerimiento puede tener un checklist de subtareas con barra de progreso.",
+      "El gráfico de Inicio muestra todos los estados (incluso en 0) en el orden de Configuración, con sensación de flujo.",
+    ],
+  },
+];
+
+function DefinitionsPanel() {
+  return (
+    <Card>
+      <CardBody>
+        <p className="mb-4 text-sm text-muted">
+          Reglas de negocio vigentes del portal. Es documentación de referencia para el equipo (no se edita desde acá).
+        </p>
+        <div className="space-y-5">
+          {DEFINITIONS.map((section) => (
+            <div key={section.title}>
+              <h3 className="mb-2 text-sm font-semibold text-ink">{section.title}</h3>
+              <ul className="space-y-1.5">
+                {section.rules.map((rule, i) => (
+                  <li key={i} className="flex gap-2 text-sm text-muted">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
+                    <span>{rule}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </CardBody>
+    </Card>
+  );
+}
+
 function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button onClick={onClick} className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${active ? "bg-brand text-white" : "text-muted hover:bg-canvas hover:text-ink"}`}>
@@ -127,16 +215,17 @@ function PeopleManager({ people }: { people: PersonRow[] }) {
   const [editing, setEditing] = useState<PersonRow | null>(null);
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
+  const [company, setCompany] = useState("");
   const [saving, setSaving] = useState(false);
   const [, startTransition] = useTransition();
 
-  function openNew() { setEditing(null); setName(""); setRole(""); setOpen(true); }
-  function openEdit(p: PersonRow) { setEditing(p); setName(p.name); setRole(p.role ?? ""); setOpen(true); }
+  function openNew() { setEditing(null); setName(""); setRole(""); setCompany(""); setOpen(true); }
+  function openEdit(p: PersonRow) { setEditing(p); setName(p.name); setRole(p.role ?? ""); setCompany(p.company ?? ""); setOpen(true); }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    await upsertPerson({ id: editing?.id, name, role });
+    await upsertPerson({ id: editing?.id, name, role, company });
     setSaving(false);
     setOpen(false);
     router.refresh();
@@ -161,6 +250,7 @@ function PeopleManager({ people }: { people: PersonRow[] }) {
               <li key={p.id} className="flex items-center gap-3 py-2.5">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand/10 text-xs font-semibold text-brand">{p.name.slice(0, 1).toUpperCase()}</span>
                 <span className="flex-1 text-sm font-medium text-ink">{p.name}</span>
+                {p.company && <Badge color="#0B1E3F">{p.company}</Badge>}
                 {p.role && <Badge>{p.role}</Badge>}
                 <button onClick={() => openEdit(p)} className="rounded-lg p-1.5 text-muted hover:bg-canvas hover:text-ink"><Pencil size={15} /></button>
                 <button onClick={() => remove(p)} className="rounded-lg p-1.5 text-muted hover:bg-red-50 hover:text-red-600"><Trash2 size={15} /></button>
@@ -172,6 +262,7 @@ function PeopleManager({ people }: { people: PersonRow[] }) {
         <Modal open={open} onClose={() => setOpen(false)} title={editing ? "Editar responsable" : "Nuevo responsable"}>
           <form onSubmit={save} className="space-y-3">
             <div><Label>Nombre</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Juan Farré" autoFocus required /></div>
+            <div><Label>Empresa</Label><Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="BiMetriks, Samboro…" /></div>
             <div><Label>Rol / Área</Label><Input value={role} onChange={(e) => setRole(e.target.value)} placeholder="BI, Logística, Costos…" /></div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}><X size={15} /> Cancelar</Button>

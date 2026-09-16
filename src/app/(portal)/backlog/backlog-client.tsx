@@ -12,10 +12,13 @@ export function BacklogClient({
   requirements,
   sprints,
   catalogs,
+  canManage = true,
 }: {
   requirements: Requirement[];
   sprints: Sprint[];
   catalogs: Catalogs;
+  /** false para el rol CLIENT: sólo puede ver y crear (con formulario simple). */
+  canManage?: boolean;
 }) {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Requirement | null>(null);
@@ -61,7 +64,7 @@ export function BacklogClient({
     <div>
       <PageHeader
         title="Backlog"
-        subtitle="Arrastrá para ordenar por prioridad y asignar a sprints"
+        subtitle={canManage ? "Arrastrá para ordenar por prioridad y asignar a sprints" : "Cargá tus requerimientos; el equipo los prioriza"}
         actions={<Button onClick={openNew}><Plus size={16} /> Nuevo requerimiento</Button>}
       />
 
@@ -98,9 +101,9 @@ export function BacklogClient({
         )}
       </Card>
 
-      <BacklogBoard key={boardKey} requirements={filtered} sprints={sprints} statuses={catalogs.statuses} onEdit={openEdit} />
+      <BacklogBoard key={boardKey} requirements={filtered} sprints={sprints} statuses={catalogs.statuses} onEdit={openEdit} canManage={canManage} />
 
-      <RequirementForm open={formOpen} onClose={() => setFormOpen(false)} catalogs={catalogs} requirement={editing} onSaved={onSaved} />
+      <RequirementForm open={formOpen} onClose={() => setFormOpen(false)} catalogs={catalogs} requirement={editing} onSaved={onSaved} clientMode={!canManage} />
     </div>
   );
 }
