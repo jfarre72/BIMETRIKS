@@ -63,7 +63,10 @@ src/
 │     ├─ sprints/          Sprints (cards) + detalle
 │     ├─ tracking/         Selector + ficha con timeline manual
 │     ├─ horas/            Horas contratadas / consumidas + historial
-│     └─ reporteria/       Reportes ejecutivos (Recharts)
+│     ├─ reporteria/       Reportes ejecutivos (Recharts)
+│     ├─ documentacion/    Documentos del proyecto
+│     ├─ facturacion/      Facturación y cobro por bloque
+│     └─ configuracion/    Responsables, horas registrables, catálogos y definiciones
 ├─ components/             Design System (ui), layout, dashboard, shared
 ├─ lib/
 │  ├─ supabase/            Clients (browser, server, middleware)

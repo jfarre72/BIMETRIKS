@@ -29,9 +29,9 @@ const NAV = [
   { href: "/sprints", label: "Sprints", icon: Layers },
   { href: "/tracking", label: "Tracking", icon: Activity },
   { href: "/horas", label: "Horas", icon: Clock },
-  { href: "/facturacion", label: "Facturación", icon: Receipt, staffOnly: true },
   { href: "/reporteria", label: "Reportería", icon: BarChart3, staffOnly: true },
   { href: "/documentacion", label: "Documentación", icon: FolderOpen, staffOnly: true },
+  { href: "/facturacion", label: "Facturación", icon: Receipt, staffOnly: true },
   { href: "/configuracion", label: "Configuración", icon: Settings, staffOnly: true },
 ];
 

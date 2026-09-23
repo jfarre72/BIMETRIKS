@@ -728,6 +728,56 @@ export async function deleteRequirementNote(id: string, requirementId: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Horas registrables (work_logs) — registro interno, sólo staff
+// ---------------------------------------------------------------------------
+const workLogSchema = z.object({
+  id: z.string().uuid().optional(),
+  log_date: z.string().min(1, "La fecha es obligatoria"),
+  hours: z.coerce.number().positive("Las horas deben ser mayores a 0"),
+  concept: z.string().trim().min(1, "El concepto es obligatorio"),
+  notes: z.preprocess(emptyToNull, z.string().nullable()),
+  image_path: z.string().nullable().optional(),
+  image_name: z.string().nullable().optional(),
+});
+
+export async function upsertWorkLog(payload: z.input<typeof workLogSchema>) {
+  const parsed = workLogSchema.safeParse(payload);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  const { id, ...values } = parsed.data;
+  const supabase = createClient();
+  if (id) {
+    const { error } = await supabase.from("work_logs").update(values).eq("id", id);
+    if (error) return { ok: false, error: error.message };
+  } else {
+    const projectId = await getProjectId();
+    const uid = await currentProfileId();
+    const { error } = await supabase.from("work_logs").insert({ ...values, project_id: projectId, created_by: uid });
+    if (error) return { ok: false, error: error.message };
+  }
+  revalidatePath("/configuracion");
+  return { ok: true };
+}
+
+export async function toggleWorkLogInvoiced(id: string, value: boolean) {
+  const supabase = createClient();
+  const { error } = await supabase.from("work_logs").update({ invoiced: value }).eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/configuracion");
+  return { ok: true };
+}
+
+export async function deleteWorkLog(id: string) {
+  const supabase = createClient();
+  const { data } = await supabase.from("work_logs").select("image_path").eq("id", id).single();
+  const path = (data as any)?.image_path as string | null;
+  if (path) await supabase.storage.from("attachments").remove([path]);
+  const { error } = await supabase.from("work_logs").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/configuracion");
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
 // Responsables (people)
 // ---------------------------------------------------------------------------
 export async function upsertPerson(payload: { id?: string; name: string; role?: string; company?: string }) {
