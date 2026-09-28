@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { getProjectId } from "@/lib/project";
+import { cookies } from "next/headers";
+import { ACTIVE_PROJECT_COOKIE, getProjectId } from "@/lib/project";
 import { clearReadCache } from "@/lib/cache";
 
 async function currentProfileId(): Promise<string | null> {
@@ -893,5 +894,6 @@ export async function updateContractedHours(id: string, payload: { entry_date: s
 export async function signOut() {
   const supabase = createClient();
   await supabase.auth.signOut();
+  cookies().delete(ACTIVE_PROJECT_COOKIE);
   revalidatePath("/", "layout");
 }

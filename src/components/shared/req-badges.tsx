@@ -17,18 +17,18 @@ export function TypeBadge({ type }: { type?: Requirement["type"] }) {
 }
 
 /**
- * Origen del requerimiento según quién lo creó: un CLIENT (Samboro) o el staff
- * (BiMetriks). Devuelve color + etiqueta para diferenciarlos visualmente.
+ * Origen del requerimiento según quién lo creó: un CLIENT (el cliente activo)
+ * o el staff (BiMetriks). Devuelve color + etiqueta para diferenciarlos.
  */
-export function creatorOrigin(creator?: Requirement["creator"]) {
+export function creatorOrigin(creator?: Requirement["creator"], clientName = "Cliente") {
   const isClient = creator?.role === "CLIENT";
   return isClient
-    ? { color: "#CA8A04", label: "Samboro", short: "S" }   // ámbar → cliente
+    ? { color: "#CA8A04", label: clientName, short: clientName.slice(0, 1).toUpperCase() } // ámbar → cliente
     : { color: "#0B1E3F", label: "BiMetriks", short: "B" }; // navy → staff
 }
 
-export function CreatorBadge({ creator }: { creator?: Requirement["creator"] }) {
-  const o = creatorOrigin(creator);
+export function CreatorBadge({ creator, clientName }: { creator?: Requirement["creator"]; clientName?: string }) {
+  const o = creatorOrigin(creator, clientName);
   return (
     <Badge color={o.color} className="whitespace-nowrap">
       {o.label}

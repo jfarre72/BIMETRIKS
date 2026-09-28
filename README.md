@@ -4,9 +4,9 @@ Portal interno de BiMetriks para centralizar la gestión de servicios/proyectos 
 Data & Analytics: backlog de requerimientos, sprints, tracking con timeline,
 gestión de horas contratadas/consumidas y reportería ejecutiva.
 
-> **Etapa 1 (MVP)** — un único cliente/proyecto, un usuario **ADMIN**.
-> La arquitectura de datos ya contempla multi-cliente, multi-proyecto y roles
-> (ADMIN / CONSULTANT / CLIENT) para habilitarlos sin rehacer la app.
+> **Multi-cliente** — el staff (ADMIN / CONSULTANT) elige qué cliente ver con el
+> filtro **Cliente** del menú lateral; cada usuario CLIENT sólo ve su cliente
+> (aislado por RLS en la base).
 
 ## Stack
 
@@ -28,8 +28,8 @@ gestión de horas contratadas/consumidas y reportería ejecutiva.
 
 3. Aplicar el esquema y los datos base en Supabase (SQL Editor o CLI):
    ```
-   supabase/migrations/0001_init.sql   # tablas, vistas, RLS, triggers
-   supabase/seed.sql                   # cliente, proyecto y catálogos base
+   supabase/migrations/0001_init.sql … 0015_multi_client.sql   # en orden
+   supabase/seed.sql                   # primer cliente, proyecto y catálogos base
    ```
 
 4. Crear el usuario administrador (usa el service_role key):
@@ -42,6 +42,19 @@ gestión de horas contratadas/consumidas y reportería ejecutiva.
    npm run dev
    ```
    Ingresar en `http://localhost:3000/login` con **usuario** y **contraseña**.
+
+## Alta de un cliente nuevo
+
+1. **Desde el portal (ADMIN):** Configuración → pestaña **Clientes** → «Nuevo
+   cliente». Crea el cliente y su proyecto, copia estados/prioridades/tipos del
+   primer cliente y lo deja seleccionado en el filtro.
+   (Alternativa en el SQL Editor: `select public.create_client_project('NAIKA');`)
+2. Con el cliente seleccionado, cargar en Configuración sus **Responsables**,
+   **Áreas** y **Dashboards**, y en Horas los bloques contratados.
+3. (Opcional) Crear el usuario del cliente, ligado a ese cliente:
+   ```bash
+   node scripts/create-user.mjs naika "Clave2026" CLIENT "Usuario NAIKA" --cliente "NAIKA"
+   ```
 
 ## Login por usuario (sin email visible)
 
@@ -70,6 +83,8 @@ src/
 ├─ components/             Design System (ui), layout, dashboard, shared
 ├─ lib/
 │  ├─ supabase/            Clients (browser, server, middleware)
+│  ├─ project.ts           Proyecto/cliente activo (cookie del selector o cliente del CLIENT)
+│  ├─ client-actions.ts    Cambio de cliente y alta de clientes
 │  ├─ queries.ts           Lecturas (server)
 │  ├─ actions.ts           Mutaciones (Server Actions + Zod)
 │  └─ types.ts             Tipos de dominio
@@ -89,5 +104,4 @@ Las horas consumidas/disponibles se **calculan** con vistas SQL
 
 ## No incluido en esta etapa (por diseño)
 
-Portal del cliente, roles ampliados, emails/notificaciones, adjuntos, multi-cliente
-en UI, login social. La base ya está preparada para incorporarlos más adelante.
+Roles ampliados, emails/notificaciones, login social. La base ya está preparada para incorporarlos más adelante.

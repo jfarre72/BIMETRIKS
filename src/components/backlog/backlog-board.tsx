@@ -334,7 +334,7 @@ function Row({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.4 : 1,
-    // Barra de color a la izquierda según el origen (Samboro / BiMetriks).
+    // Barra de color a la izquierda según el origen (cliente / BiMetriks).
     boxShadow: `inset 4px 0 0 0 ${origin.color}`,
   };
   // Sólo staff arrastra y usa el stepper/acciones. El CLIENT ve la fila en modo lectura.
