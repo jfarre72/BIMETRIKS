@@ -48,27 +48,22 @@ body {
   display: none;
 }
 @media print {
-  body * {
-    visibility: hidden;
+  /* El área de reporte se monta directo en <body> (portal). Ocultamos el resto
+     con display:none para que no ocupe espacio ni genere hojas en blanco. */
+  body > *:not(.print-area) {
+    display: none !important;
   }
-  .print-area,
-  .print-area * {
-    visibility: visible;
+  body {
+    background: #fff !important;
   }
   .print-area {
     display: block !important;
-    position: absolute;
-    left: 0;
-    top: 0;
     width: 100%;
-    padding: 24px;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  .print-area .sprint-block {
-    page-break-inside: avoid;
-  }
   @page {
-    margin: 16mm;
+    size: A4;
+    margin: 12mm;
   }
 }

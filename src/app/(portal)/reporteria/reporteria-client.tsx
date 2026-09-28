@@ -19,7 +19,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardBody, CardHeader, CardTitle, EmptyState } from "@/components/ui";
 import { StatCard } from "@/components/ui/stat-card";
 import { HourBlocksChart } from "@/components/dashboard/hour-blocks-chart";
-import { ReportPdf, type ReportReq, type SprintReport } from "./report-pdf";
+import { ReportPdf, type SprintReport } from "./report-pdf";
 import { formatHours, formatDateShort } from "@/lib/utils";
 import type { HourBlock } from "@/lib/queries";
 
@@ -32,8 +32,8 @@ export function ReporteriaClient({
   blocks,
   totals,
   clientName,
-  reportReqs,
   sprintReport,
+  defaultSprintId,
 }: {
   hours: { contracted: number; consumed: number; available: number };
   byStatus: { name: string; color: string; value: number }[];
@@ -41,8 +41,8 @@ export function ReporteriaClient({
   blocks: HourBlock[];
   totals: { total: number; finalized: number; pending: number };
   clientName: string;
-  reportReqs: ReportReq[];
   sprintReport: SprintReport[];
+  defaultSprintId: string | null;
 }) {
   const contractedVsConsumed = [
     { name: "Contratadas", horas: hours.contracted },
@@ -54,7 +54,7 @@ export function ReporteriaClient({
     <div>
       <PageHeader title="Reportería" subtitle="Reportes ejecutivos del servicio" />
 
-      <ReportPdf clientName={clientName} requirements={reportReqs} hours={hours} sprintReport={sprintReport} />
+      <ReportPdf clientName={clientName} hours={hours} sprintReport={sprintReport} defaultSprintId={defaultSprintId} />
 
       <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Requerimientos" value={totals.total} accent="#0B1E3F" />
