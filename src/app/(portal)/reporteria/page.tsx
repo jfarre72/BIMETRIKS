@@ -1,7 +1,7 @@
 import { getProjectHours, getRequirements, getSprints, getTimeEntries, getHourBlocks, getClientName } from "@/lib/queries";
 import { requireStaff } from "@/lib/auth";
 import { ReporteriaClient } from "./reporteria-client";
-import type { ReportReq, SprintReport } from "./report-pdf";
+import type { SprintReport } from "./report-pdf";
 
 export const dynamic = "force-dynamic";
 
@@ -16,29 +16,24 @@ export default async function ReporteriaPage() {
     getClientName(),
   ]);
 
-  const reportReqs: ReportReq[] = requirements.map((r) => ({
-    code: r.code,
-    title: r.title,
-    area: r.area?.name ?? "—",
-    status: r.status?.name ?? "Sin estado",
-    statusColor: r.status?.color ?? "#94A3B8",
-    estimated: Number(r.estimated_hours ?? 0),
-    consumed: Number(r.consumed_hours ?? 0),
-    sprint: r.sprint?.name ?? "—",
-    updatedAt: r.updated_at,
-  }));
-
-  // Detalle por sprint: cada sprint con sus requerimientos y estados.
+  // Reporte PDF por sprint: cada sprint con sus requerimientos y estados.
   const bySprintGroups = new Map<string, SprintReport>();
   sprints.forEach((s) =>
-    bySprintGroups.set(s.id, { name: s.name, status: s.status, estimated: 0, consumed: 0, requirements: [] })
+    bySprintGroups.set(s.id, {
+      id: s.id, name: s.name, status: s.status, startDate: s.start_date, targetDate: s.target_date,
+      estimated: 0, consumed: 0, requirements: [],
+    })
   );
-  const unassigned: SprintReport = { name: "Sin asignar", status: null, estimated: 0, consumed: 0, requirements: [] };
+  const unassigned: SprintReport = {
+    id: "none", name: "Sin asignar", status: null, startDate: null, targetDate: null,
+    estimated: 0, consumed: 0, requirements: [],
+  };
   requirements.forEach((r) => {
     const group = (r.sprint?.id && bySprintGroups.get(r.sprint.id)) || unassigned;
     group.requirements.push({
       code: r.code,
       title: r.title,
+      area: r.area?.name ?? "—",
       status: r.status?.name ?? "Sin estado",
       statusColor: r.status?.color ?? "#94A3B8",
       estimated: Number(r.estimated_hours ?? 0),
@@ -47,8 +42,10 @@ export default async function ReporteriaPage() {
     group.estimated += Number(r.estimated_hours ?? 0);
     group.consumed += Number(r.consumed_hours ?? 0);
   });
+  // Sprints más recientes primero; "Sin asignar" al final si tiene requerimientos.
   const sprintReport: SprintReport[] = [...bySprintGroups.values()].filter((g) => g.requirements.length > 0);
   if (unassigned.requirements.length > 0) sprintReport.push(unassigned);
+  const defaultSprintId = (sprintReport.find((g) => g.status === "Activo") ?? sprintReport[0])?.id ?? null;
 
   // Requerimientos por estado
   const byStatusMap = new Map<string, { name: string; color: string; value: number }>();
@@ -78,8 +75,8 @@ export default async function ReporteriaPage() {
       blocks={blocks}
       totals={{ total: requirements.length, finalized, pending }}
       clientName={clientName}
-      reportReqs={reportReqs}
       sprintReport={sprintReport}
+      defaultSprintId={defaultSprintId}
     />
   );
 }
