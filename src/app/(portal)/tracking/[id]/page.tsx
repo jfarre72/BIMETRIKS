@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { getRequirement, getRequirementNotes, getAttachments, getCatalogs, getChecklist, getCurrentProfile } from "@/lib/queries";
+import { getRequirement, getRequirementNotes, getAttachments, getCatalogs, getChecklist, getCurrentProfile, getClientName } from "@/lib/queries";
 import { isStaffRole } from "@/lib/auth";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardBody } from "@/components/ui";
@@ -18,12 +18,13 @@ export const dynamic = "force-dynamic";
 export default async function RequirementDetailPage({ params }: { params: { id: string } }) {
   const requirement = await getRequirement(params.id);
   if (!requirement) notFound();
-  const [notes, attachments, catalogs, checklist, profile] = await Promise.all([
+  const [notes, attachments, catalogs, checklist, profile, clientName] = await Promise.all([
     getRequirementNotes(params.id),
     getAttachments(params.id),
     getCatalogs(),
     getChecklist(params.id),
     getCurrentProfile(),
+    getClientName(),
   ]);
   const canManage = isStaffRole(profile?.role);
 
@@ -34,7 +35,7 @@ export default async function RequirementDetailPage({ params }: { params: { id: 
     ["Estado", canManage
       ? <StatusSelect key="s" requirementId={requirement.id} value={requirement.status_id} statuses={catalogs.statuses} sprintId={requirement.sprint?.id ?? null} estimatedHours={Number(requirement.estimated_hours ?? 0)} />
       : <StatusBadge key="s" status={requirement.status} />],
-    ["Origen", <CreatorBadge key="o" creator={requirement.creator} />],
+    ["Origen", <CreatorBadge key="o" creator={requirement.creator} clientName={clientName} />],
     ["Creado por", requirement.creator?.full_name || requirement.creator?.username || "—"],
     ["Responsable", requirement.assignee?.name ?? "—"],
     ["Validación", requirement.validator?.name ?? "—"],

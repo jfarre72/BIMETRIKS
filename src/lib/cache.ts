@@ -1,3 +1,5 @@
+import { getProjectId } from "@/lib/project";
+
 // Caché en memoria por instancia (server). Reduce round-trips a Supabase en
 // datos que cambian poco (catálogos, proyecto, cliente, bloques de horas).
 // Se limpia explícitamente al escribir (clearReadCache) y tiene TTL de respaldo.
@@ -15,4 +17,12 @@ export async function cached<T>(key: string, ttlMs: number, fn: () => Promise<T>
 
 export function clearReadCache() {
   store.clear();
+}
+
+/**
+ * Igual que `cached`, pero con la clave separada por proyecto activo: con
+ * multi-cliente, dos usuarios pueden estar mirando proyectos distintos.
+ */
+export async function cachedByProject<T>(key: string, ttlMs: number, fn: () => Promise<T>): Promise<T> {
+  return cached(`${await getProjectId()}:${key}`, ttlMs, fn);
 }

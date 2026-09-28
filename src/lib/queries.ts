@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { getProjectId } from "@/lib/project";
-import { cached } from "@/lib/cache";
+import { getActiveProject, getProjectId } from "@/lib/project";
+import { cachedByProject } from "@/lib/cache";
 import type {
   Catalogs,
   ContractedHours,
@@ -36,7 +36,7 @@ function shapeRequirement(r: any): Requirement {
 }
 
 export async function getCatalogs(): Promise<Catalogs> {
-  return cached("catalogs", 30_000, _getCatalogs);
+  return cachedByProject("catalogs", 30_000, _getCatalogs);
 }
 
 async function _getCatalogs(): Promise<Catalogs> {
@@ -143,7 +143,7 @@ export async function getChecklist(reqId: string) {
 }
 
 export async function getSprints(): Promise<Sprint[]> {
-  return cached("sprints", 8000, _getSprints);
+  return cachedByProject("sprints", 8000, _getSprints);
 }
 async function _getSprints(): Promise<Sprint[]> {
   const supabase = createClient();
@@ -190,7 +190,7 @@ export async function getSprint(id: string): Promise<{ sprint: Sprint | null; re
 }
 
 export async function getProjectHours() {
-  return cached("projectHours", 8000, _getProjectHours);
+  return cachedByProject("projectHours", 8000, _getProjectHours);
 }
 async function _getProjectHours() {
   const supabase = createClient();
@@ -206,16 +206,7 @@ async function _getProjectHours() {
 }
 
 export async function getClientName(): Promise<string> {
-  return cached("clientName", 60_000, async () => {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("projects")
-      .select("client:clients(name)")
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .single();
-    return ((data as any)?.client?.name as string) ?? "Cliente";
-  });
+  return (await getActiveProject()).clientName;
 }
 
 /**
@@ -233,7 +224,7 @@ export interface HourBlock {
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
 export async function getHourBlocks(): Promise<HourBlock[]> {
-  return cached("hourBlocks", 15_000, async () => {
+  return cachedByProject("hourBlocks", 15_000, async () => {
     const supabase = createClient();
     const PROJECT_ID = await getProjectId();
     const [{ data: blocks }, { data: total }] = await Promise.all([
@@ -320,7 +311,7 @@ export interface BillingBlock {
 }
 
 export async function getBillingBlocks(): Promise<BillingBlock[]> {
-  return cached("billing", 8000, _getBillingBlocks);
+  return cachedByProject("billing", 8000, _getBillingBlocks);
 }
 async function _getBillingBlocks(): Promise<BillingBlock[]> {
   const supabase = createClient();
@@ -364,7 +355,7 @@ export async function getProjectDocuments() {
 }
 
 export async function getContractedHours(): Promise<ContractedHours[]> {
-  return cached("contractedHours", 8000, _getContractedHours);
+  return cachedByProject("contractedHours", 8000, _getContractedHours);
 }
 async function _getContractedHours(): Promise<ContractedHours[]> {
   const supabase = createClient();
@@ -378,7 +369,7 @@ async function _getContractedHours(): Promise<ContractedHours[]> {
 }
 
 export async function getTimeEntries(limit = 100): Promise<TimeEntry[]> {
-  return cached(`timeEntries:${limit}`, 8000, () => _getTimeEntries(limit));
+  return cachedByProject(`timeEntries:${limit}`, 8000, () => _getTimeEntries(limit));
 }
 async function _getTimeEntries(limit: number): Promise<TimeEntry[]> {
   const supabase = createClient();

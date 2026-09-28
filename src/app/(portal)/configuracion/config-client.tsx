@@ -9,15 +9,20 @@ import { StatCard } from "@/components/ui/stat-card";
 import { Modal } from "@/components/ui/sheet";
 import { upsertCatalogItem, deleteCatalogItem, moveCatalogItem, type CatalogKind } from "@/lib/catalog-actions";
 import { upsertPerson, deletePerson, upsertWorkLog, toggleWorkLogInvoiced, deleteWorkLog } from "@/lib/actions";
+import { createClientProject } from "@/lib/client-actions";
+import type { ProjectOption } from "@/lib/project";
 import { createClient } from "@/lib/supabase/client";
 import { formatHours } from "@/lib/utils";
 
 export type CatalogRow = { id: string; name: string; color?: string; is_final?: boolean; order: number };
 
-// Color de la empresa del responsable: Samboro (rojo) / BiMetriks (azul).
-function companyColor(company: string): string | undefined {
-  const c = company.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
-  if (c.includes("samboro")) return "#DC2626"; // rojo
+const normalize = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
+// Color de la empresa del responsable: el cliente activo (rojo) / BiMetriks (azul).
+function companyColor(company: string, clientName: string): string | undefined {
+  const c = normalize(company);
+  const client = normalize(clientName);
+  if (client && c.includes(client)) return "#DC2626"; // rojo
   if (c.includes("bimetriks") || c.includes("bi metriks")) return "#1E5EFF"; // azul
   return undefined; // otras empresas: badge neutro
 }
@@ -35,7 +40,7 @@ export type WorkLogRow = {
 };
 
 type Data = Record<CatalogKind, CatalogRow[]>;
-type View = "people" | "work_logs" | "definitions" | CatalogKind;
+type View = "people" | "work_logs" | "clients" | "definitions" | CatalogKind;
 
 const CATALOG_TABS: { key: CatalogKind; label: string; hasColor: boolean; ordered: boolean }[] = [
   { key: "req_statuses", label: "Estados", hasColor: true, ordered: true },
@@ -45,7 +50,21 @@ const CATALOG_TABS: { key: CatalogKind; label: string; hasColor: boolean; ordere
   { key: "dashboards", label: "Dashboards", hasColor: false, ordered: true },
 ];
 
-export function ConfigClient({ data, people, workLogs }: { data: Data; people: PersonRow[]; workLogs: WorkLogRow[] }) {
+export function ConfigClient({
+  data,
+  people,
+  workLogs,
+  clientName,
+  projects,
+  activeProjectId,
+}: {
+  data: Data;
+  people: PersonRow[];
+  workLogs: WorkLogRow[];
+  clientName: string;
+  projects: ProjectOption[];
+  activeProjectId: string;
+}) {
   const router = useRouter();
   const [view, setView] = useState<View>("people");
   const [editing, setEditing] = useState<CatalogRow | null>(null);
@@ -55,7 +74,8 @@ export function ConfigClient({ data, people, workLogs }: { data: Data; people: P
   const isPeople = view === "people";
   const isDefinitions = view === "definitions";
   const isWorkLogs = view === "work_logs";
-  const isCatalog = !isPeople && !isDefinitions && !isWorkLogs;
+  const isClients = view === "clients";
+  const isCatalog = !isPeople && !isDefinitions && !isWorkLogs && !isClients;
   const tab = view as CatalogKind;
   const active = isCatalog ? CATALOG_TABS.find((t) => t.key === tab) : undefined;
   const rows = isCatalog ? data[tab] : [];
@@ -78,7 +98,7 @@ export function ConfigClient({ data, people, workLogs }: { data: Data; people: P
     <div>
       <PageHeader
         title="Configuración"
-        subtitle="Responsables, horas registrables y catálogos: estados, prioridades, tipos y áreas"
+        subtitle={`Cliente: ${clientName} · Responsables, horas registrables, catálogos y clientes`}
         actions={
           isCatalog && <Button onClick={() => { setEditing(null); setFormOpen(true); }}><Plus size={16} /> Nuevo</Button>
         }
@@ -91,13 +111,16 @@ export function ConfigClient({ data, people, workLogs }: { data: Data; people: P
           <TabBtn key={t.key} active={view === t.key} onClick={() => setView(t.key)}>{t.label}</TabBtn>
         ))}
         <TabBtn active={isWorkLogs} onClick={() => setView("work_logs")}>Horas registrables</TabBtn>
+        <TabBtn active={isClients} onClick={() => setView("clients")}>Clientes</TabBtn>
         <TabBtn active={isDefinitions} onClick={() => setView("definitions")}>Definiciones</TabBtn>
       </div>
 
       {isPeople ? (
-        <PeopleManager people={people} />
+        <PeopleManager people={people} clientName={clientName} />
       ) : isWorkLogs ? (
         <WorkLogsManager logs={workLogs} />
+      ) : isClients ? (
+        <ClientsManager projects={projects} activeProjectId={activeProjectId} />
       ) : isDefinitions ? (
         <DefinitionsPanel />
       ) : (
@@ -177,7 +200,8 @@ const DEFINITIONS: { title: string; rules: string[] }[] = [
     title: "Perfiles y accesos",
     rules: [
       "Staff (ADMIN / CONSULTANT, BiMetriks): acceso total a todas las secciones.",
-      "Cliente (CLIENT, Samboro): sólo VE Inicio, Tareas, Backlog, Sprints, Tracking y Horas.",
+      "Cliente (CLIENT): sólo VE Inicio, Tareas, Backlog, Sprints, Tracking y Horas, y únicamente de SU cliente.",
+      "Staff elige qué cliente ver con el filtro «Cliente» del menú lateral; todas las secciones muestran ese cliente.",
       "El cliente NO accede a Facturación, Reportería, Documentación ni Configuración.",
       "El cliente sólo puede crear requerimientos; no puede editarlos ni priorizarlos.",
     ],
@@ -188,7 +212,7 @@ const DEFINITIONS: { title: string; rules: string[] }[] = [
       "Se cargan con un formulario reducido: Título, Área, Página/Módulo, Dashboard, Descripción y Observaciones.",
       "Arrancan en estado «Nuevo», sin sprint y sin horas estimadas. El staff los prioriza.",
       "Se registra quién creó cada requerimiento y se muestra en el detalle («Creado por»).",
-      "El color/etiqueta de origen distingue: Samboro (ámbar) vs BiMetriks (navy), con una barra a la izquierda de cada fila.",
+      "El color/etiqueta de origen distingue: cliente (ámbar) vs BiMetriks (navy), con una barra a la izquierda de cada fila.",
       "El campo «Dashboard» indica en qué dashboard y página se quiere el requerimiento.",
     ],
   },
@@ -236,7 +260,7 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
   );
 }
 
-function PeopleManager({ people }: { people: PersonRow[] }) {
+function PeopleManager({ people, clientName }: { people: PersonRow[]; clientName: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<PersonRow | null>(null);
@@ -304,7 +328,7 @@ function PeopleManager({ people }: { people: PersonRow[] }) {
                         <span className="font-medium text-ink">{p.name}</span>
                       </div>
                     </td>
-                    <td className="px-2 py-2.5">{p.company ? <Badge color={companyColor(p.company)}>{p.company}</Badge> : <span className="text-muted">—</span>}</td>
+                    <td className="px-2 py-2.5">{p.company ? <Badge color={companyColor(p.company, clientName)}>{p.company}</Badge> : <span className="text-muted">—</span>}</td>
                     <td className="px-2 py-2.5">{p.role ? <Badge>{p.role}</Badge> : <span className="text-muted">—</span>}</td>
                     <td className="whitespace-nowrap px-2 py-2.5 text-right">
                       <button onClick={() => openEdit(p)} className="rounded-lg p-1.5 text-muted hover:bg-canvas hover:text-ink"><Pencil size={15} /></button>
@@ -320,11 +344,79 @@ function PeopleManager({ people }: { people: PersonRow[] }) {
         <Modal open={open} onClose={() => setOpen(false)} title={editing ? "Editar responsable" : "Nuevo responsable"}>
           <form onSubmit={save} className="space-y-3">
             <div><Label>Nombre</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Juan Farré" autoFocus required /></div>
-            <div><Label>Empresa</Label><Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="BiMetriks, Samboro…" /></div>
+            <div><Label>Empresa</Label><Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder={`BiMetriks, ${clientName}…`} /></div>
             <div><Label>Rol / Área</Label><Input value={role} onChange={(e) => setRole(e.target.value)} placeholder="BI, Logística, Costos…" /></div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}><X size={15} /> Cancelar</Button>
               <Button type="submit" disabled={saving}>{saving ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />} Guardar</Button>
+            </div>
+          </form>
+        </Modal>
+      </CardBody>
+    </Card>
+  );
+}
+
+function ClientsManager({ projects, activeProjectId }: { projects: ProjectOption[]; activeProjectId: string }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [clientName, setClientName] = useState("");
+  const [projectName, setProjectName] = useState("Servicio Data & Analytics");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function openNew() { setClientName(""); setProjectName("Servicio Data & Analytics"); setError(null); setOpen(true); }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    const res = await createClientProject({ clientName, projectName });
+    setSaving(false);
+    if (!res.ok) return setError(res.error ?? "No se pudo crear el cliente");
+    setOpen(false);
+    router.refresh();
+  }
+
+  return (
+    <Card>
+      <CardBody>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="text-sm text-muted">
+            Clientes del portal. Se elige cuál ver con el filtro «Cliente» del menú lateral. Un cliente nuevo arranca
+            con los estados, prioridades y tipos del primer cliente; áreas, dashboards y responsables se cargan aparte.
+          </p>
+          <Button size="sm" onClick={openNew}><Plus size={15} /> Nuevo cliente</Button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
+                <th className="px-2 py-2">Cliente</th>
+                <th className="px-2 py-2">Proyecto</th>
+                <th className="w-28 px-2 py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {projects.map((p) => (
+                <tr key={p.id} className="border-b border-line last:border-0">
+                  <td className="px-2 py-2.5 font-medium text-ink">{p.clientName}</td>
+                  <td className="px-2 py-2.5 text-muted">{p.name}</td>
+                  <td className="px-2 py-2.5 text-right">{p.id === activeProjectId && <Badge color="#1E5EFF">activo</Badge>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <Modal open={open} onClose={() => setOpen(false)} title="Nuevo cliente">
+          <form onSubmit={save} className="space-y-3">
+            <div><Label>Nombre del cliente</Label><Input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="NAIKA" autoFocus required /></div>
+            <div><Label>Nombre del proyecto</Label><Input value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="Servicio Data & Analytics" /></div>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => setOpen(false)}><X size={15} /> Cancelar</Button>
+              <Button type="submit" disabled={saving}>{saving ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />} Crear</Button>
             </div>
           </form>
         </Modal>

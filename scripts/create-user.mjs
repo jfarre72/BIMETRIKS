@@ -2,20 +2,21 @@
  * Crea un usuario de BiMetriks con un rol determinado.
  *
  * Uso:
- *   node scripts/create-user.mjs <username> <password> <ROLE> ["Nombre Completo"]
+ *   node scripts/create-user.mjs <username> <password> <ROLE> ["Nombre Completo"] [--cliente "Nombre Cliente"]
  *
  *   ROLE = ADMIN | CONSULTANT | CLIENT
  *
- * Ejemplo (alta del cliente Samboro):
- *   node scripts/create-user.mjs samboro bi2026 CLIENT "Samboro"
+ * Ejemplo (usuario del cliente NAIKA):
+ *   node scripts/create-user.mjs naika Clave2026 CLIENT "Usuario NAIKA" --cliente "NAIKA"
  *
  * Requiere en el entorno:
  *   NEXT_PUBLIC_SUPABASE_URL
  *   SUPABASE_SERVICE_ROLE_KEY            (service role, NUNCA en el cliente)
  *   NEXT_PUBLIC_INTERNAL_EMAIL_DOMAIN    (opcional, default bimetriks.local)
  *
- * Para el rol CLIENT, el perfil queda ligado al primer cliente cargado
- * (client_id), que en el MVP es Samboro.
+ * Para el rol CLIENT, el perfil queda ligado al cliente indicado con
+ * --cliente (por nombre, sin distinguir mayúsculas). Sólo verá ese cliente.
+ * Si hay un único cliente cargado, --cliente es opcional.
  */
 import { createClient } from "@supabase/supabase-js";
 
@@ -23,7 +24,11 @@ const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const domain = process.env.NEXT_PUBLIC_INTERNAL_EMAIL_DOMAIN ?? "bimetriks.local";
 
-const [, , username, password, roleArg, ...nameParts] = process.argv;
+const argv = process.argv.slice(2);
+const clientFlag = argv.indexOf("--cliente");
+const clientArg = clientFlag >= 0 ? argv[clientFlag + 1] : null;
+if (clientFlag >= 0) argv.splice(clientFlag, 2);
+const [username, password, roleArg, ...nameParts] = argv;
 const role = (roleArg ?? "").toUpperCase();
 const fullName = nameParts.join(" ") || username;
 
@@ -34,27 +39,32 @@ if (!url || !serviceKey) {
   process.exit(1);
 }
 if (!username || !password || !VALID_ROLES.includes(role)) {
-  console.error('Uso: node scripts/create-user.mjs <username> <password> <ADMIN|CONSULTANT|CLIENT> ["Nombre"]');
+  console.error('Uso: node scripts/create-user.mjs <username> <password> <ADMIN|CONSULTANT|CLIENT> ["Nombre"] [--cliente "Cliente"]');
   process.exit(1);
 }
 
 const email = `${username.trim().toLowerCase().replace(/[^a-z0-9._-]/g, "")}@${domain}`;
 const supabase = createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
 
-// Para CLIENT, ligamos el perfil al primer cliente cargado (Samboro en el MVP).
+// Para CLIENT, ligamos el perfil al cliente indicado con --cliente.
 let clientId = null;
 if (role === "CLIENT") {
-  const { data: client } = await supabase
-    .from("clients")
-    .select("id,name")
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .single();
-  clientId = client?.id ?? null;
-  if (!clientId) {
-    console.error("No se encontró ningún cliente en la base para ligar el perfil CLIENT.");
+  const { data: clients } = await supabase.from("clients").select("id,name").order("created_at", { ascending: true });
+  const all = clients ?? [];
+  let client = null;
+  if (clientArg) {
+    client = all.find((c) => c.name.trim().toLowerCase() === clientArg.trim().toLowerCase()) ?? null;
+    if (!client) {
+      console.error(`No existe el cliente "${clientArg}". Clientes cargados: ${all.map((c) => c.name).join(", ") || "(ninguno)"}`);
+      process.exit(1);
+    }
+  } else if (all.length === 1) {
+    client = all[0];
+  } else {
+    console.error(`Indicá el cliente con --cliente "Nombre". Clientes cargados: ${all.map((c) => c.name).join(", ") || "(ninguno)"}`);
     process.exit(1);
   }
+  clientId = client.id;
   console.log(`→ Ligando el perfil al cliente "${client.name}".`);
 }
 

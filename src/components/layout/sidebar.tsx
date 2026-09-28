@@ -21,6 +21,8 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/brand/logo";
 import { signOut } from "@/lib/actions";
+import type { ProjectOption } from "@/lib/project";
+import { ClientSwitcher } from "@/components/layout/client-switcher";
 
 const NAV = [
   { href: "/", label: "Inicio", icon: LayoutDashboard },
@@ -39,10 +41,15 @@ export function Sidebar({
   user,
   clientName,
   role = "CLIENT",
+  projects = [],
+  activeProjectId,
 }: {
   user: { name: string; username: string };
   clientName?: string;
   role?: string;
+  /** Sólo staff: proyectos/clientes disponibles para el selector. */
+  projects?: ProjectOption[];
+  activeProjectId?: string;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -77,7 +84,9 @@ export function Sidebar({
           </button>
         </div>
 
-        {clientName && (
+        {isStaff && projects.length > 0 ? (
+          <ClientSwitcher projects={projects} activeProjectId={activeProjectId} />
+        ) : clientName && (
           <div className="mx-3 mb-2 flex items-baseline gap-2 rounded-lg border border-navy-800 bg-white/5 px-3 py-1.5">
             <span className="text-[10px] uppercase tracking-wider text-white/40">Cliente</span>
             <span className="truncate text-sm font-semibold text-white">{clientName}</span>
