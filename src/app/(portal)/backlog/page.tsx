@@ -18,5 +18,5 @@ export default async function BacklogPage() {
   // Sprints más antiguos primero (Sprint 1, 2, ...); "Sin asignar" lo agrega el board.
   const ordered = [...sprints].reverse();
   const canManage = isStaffRole(profile?.role);
-  return <BacklogClient requirements={visible} sprints={ordered} catalogs={catalogs} canManage={canManage} />;
+  return <BacklogClient requirements={visible} sprints={ordered} catalogs={catalogs} canManage={canManage} isAdmin={profile?.role === "ADMIN"} />;
 }

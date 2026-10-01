@@ -5,7 +5,7 @@ import { getRequirement, getRequirementNotes, getAttachments, getCatalogs, getCh
 import { isStaffRole } from "@/lib/auth";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardBody } from "@/components/ui";
-import { PriorityBadge, TypeBadge, StatusBadge, CreatorBadge } from "@/components/shared/req-badges";
+import { PriorityBadge, TypeBadge, StatusBadge, CreatorBadge, MeetingTag } from "@/components/shared/req-badges";
 import { StatusSelect } from "@/components/shared/status-select";
 import { Checklist } from "@/components/shared/checklist";
 import { AttachmentUploader } from "@/components/shared/attachment-uploader";
@@ -30,10 +30,10 @@ export default async function RequirementDetailPage({ params }: { params: { id: 
 
   const meta: [string, React.ReactNode][] = [
     ["Área", requirement.area?.name ?? "—"],
-    ["Tipo", requirement.type ? <TypeBadge type={requirement.type} /> : "—"],
+    ["Tipo", requirement.kind === "MEETING" ? <MeetingTag key="t" kind={requirement.kind} /> : requirement.type ? <TypeBadge type={requirement.type} /> : "—"],
     ["Prioridad", <PriorityBadge key="p" priority={requirement.priority} />],
     ["Estado", canManage
-      ? <StatusSelect key="s" requirementId={requirement.id} value={requirement.status_id} statuses={catalogs.statuses} sprintId={requirement.sprint?.id ?? null} estimatedHours={Number(requirement.estimated_hours ?? 0)} />
+      ? <StatusSelect key="s" requirementId={requirement.id} value={requirement.status_id} statuses={catalogs.statuses} sprintId={requirement.sprint?.id ?? null} estimatedHours={Number(requirement.estimated_hours ?? 0)} kind={requirement.kind} />
       : <StatusBadge key="s" status={requirement.status} />],
     ["Origen", <CreatorBadge key="o" creator={requirement.creator} clientName={clientName} />],
     ["Creado por", requirement.creator?.full_name || requirement.creator?.username || "—"],

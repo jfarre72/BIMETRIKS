@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button, Card, ProgressBar, EmptyState, Badge } from "@/components/ui";
 import { deleteSprint, archiveSprint } from "@/lib/actions";
 import { SprintStatusBadge } from "@/components/shared/sprint-status";
-import { PriorityBadge, StatusBadge } from "@/components/shared/req-badges";
+import { PriorityBadge, StatusBadge, MeetingTag } from "@/components/shared/req-badges";
 import { StatusStepper } from "@/components/shared/status-stepper";
 import { formatHours, formatDate, pct } from "@/lib/utils";
 import type { Catalogs, Requirement, Sprint } from "@/lib/types";
@@ -160,11 +160,11 @@ export function SprintsClient({
                                 className="cursor-pointer border-b border-line last:border-0 hover:bg-canvas/40"
                               >
                                 <td className="whitespace-nowrap px-4 py-2 font-mono text-xs font-semibold text-brand">{r.code}</td>
-                                <td className="px-2 py-2 font-medium text-ink">{r.title}</td>
+                                <td className="px-2 py-2 font-medium text-ink"><span className="inline-flex flex-wrap items-center gap-1.5">{r.title} <MeetingTag kind={r.kind} /></span></td>
                                 <td className="px-2 py-2"><PriorityBadge priority={r.priority} /></td>
                                 <td className="px-2 py-2">
                                   {canManage
-                                    ? <StatusStepper requirementId={r.id} value={r.status_id} statuses={statuses} sprintId={s.id} estimatedHours={Number(r.estimated_hours ?? 0)} />
+                                    ? <StatusStepper requirementId={r.id} value={r.status_id} statuses={statuses} sprintId={s.id} estimatedHours={Number(r.estimated_hours ?? 0)} kind={r.kind} />
                                     : <StatusBadge status={r.status} />}
                                 </td>
                                 <td className="px-2 py-2 text-right tabular text-muted">{formatHours(r.estimated_hours)}</td>

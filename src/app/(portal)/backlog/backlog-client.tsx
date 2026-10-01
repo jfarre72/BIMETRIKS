@@ -1,27 +1,32 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Search, X } from "lucide-react";
+import { Plus, Search, X, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button, Card, Input, Select } from "@/components/ui";
 import { BacklogBoard } from "@/components/backlog/backlog-board";
 import type { Catalogs, Requirement, Sprint } from "@/lib/types";
 import { RequirementForm } from "./requirement-form";
+import type { RequirementKind } from "@/lib/requirement-kind";
 
 export function BacklogClient({
   requirements,
   sprints,
   catalogs,
   canManage = true,
+  isAdmin = false,
 }: {
   requirements: Requirement[];
   sprints: Sprint[];
   catalogs: Catalogs;
   /** false para el rol CLIENT: sólo puede ver y crear (con formulario simple). */
   canManage?: boolean;
+  /** Sólo el ADMIN puede crear reuniones (REU-####). */
+  isAdmin?: boolean;
 }) {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Requirement | null>(null);
+  const [newKind, setNewKind] = useState<RequirementKind>("REQ");
   // Copia local para reflejar altas/ediciones al instante; se resincroniza
   // con el servidor cuando llega el refresh.
   const [localReqs, setLocalReqs] = useState<Requirement[]>(requirements);
@@ -53,7 +58,7 @@ export function BacklogClient({
     [filtered, q, area, status, priority, type]
   );
 
-  function openNew() { setEditing(null); setFormOpen(true); }
+  function openNew(kind: RequirementKind = "REQ") { setEditing(null); setNewKind(kind); setFormOpen(true); }
   function openEdit(req: Requirement) { setEditing(req); setFormOpen(true); }
 
   function onSaved(req: Requirement, isEdit: boolean) {
@@ -65,14 +70,21 @@ export function BacklogClient({
       <PageHeader
         title="Backlog"
         subtitle={canManage ? "Arrastrá para ordenar por prioridad y asignar a sprints" : "Cargá tus requerimientos; el equipo los prioriza"}
-        actions={<Button onClick={openNew}><Plus size={16} /> Nuevo requerimiento</Button>}
+        actions={
+          <div className="flex gap-2">
+            {isAdmin && (
+              <Button variant="secondary" onClick={() => openNew("MEETING")}><Users size={16} /> Nueva reunión</Button>
+            )}
+            <Button onClick={() => openNew("REQ")}><Plus size={16} /> Nuevo requerimiento</Button>
+          </div>
+        }
       />
 
       <Card className="mb-4 p-4">
         <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
           <div className="relative lg:col-span-2">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-            <Input className="pl-9" placeholder="Buscar por REQ o título…" value={q} onChange={(e) => setQ(e.target.value)} />
+            <Input className="pl-9" placeholder="Buscar por REQ, REU o título…" value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
           <Select value={area} onChange={(e) => setArea(e.target.value)}>
             <option value="">Área</option>
@@ -103,7 +115,7 @@ export function BacklogClient({
 
       <BacklogBoard key={boardKey} requirements={filtered} sprints={sprints} statuses={catalogs.statuses} onEdit={openEdit} canManage={canManage} />
 
-      <RequirementForm open={formOpen} onClose={() => setFormOpen(false)} catalogs={catalogs} requirement={editing} onSaved={onSaved} clientMode={!canManage} />
+      <RequirementForm open={formOpen} onClose={() => setFormOpen(false)} catalogs={catalogs} requirement={editing} onSaved={onSaved} clientMode={!canManage} kind={newKind} />
     </div>
   );
 }
