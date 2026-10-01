@@ -19,7 +19,16 @@ const EVENT_COLOR: Record<string, string> = {
   sprint: "#DB2777",
 };
 
-export function Timeline({ requirementId, notes }: { requirementId: string; notes: RequirementNote[] }) {
+export function Timeline({
+  requirementId,
+  notes,
+  canManage = true,
+}: {
+  requirementId: string;
+  notes: RequirementNote[];
+  /** false = CLIENT: sólo puede agregar notas (sin tipo de evento ni borrar). */
+  canManage?: boolean;
+}) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [pending, setPending] = useState(false);
@@ -51,12 +60,16 @@ export function Timeline({ requirementId, notes }: { requirementId: string; note
       {adding && (
         <form onSubmit={onSubmit} className="mb-5 rounded-xl border border-line bg-canvas/60 p-4">
           <input type="hidden" name="requirement_id" value={requirementId} />
-          <div className="mb-3 grid grid-cols-2 gap-3">
-            <Select name="event_type" defaultValue="nota">
-              {EVENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-            </Select>
-            <Input type="date" name="event_date" defaultValue={new Date().toISOString().slice(0, 10)} />
-          </div>
+          {canManage ? (
+            <div className="mb-3 grid grid-cols-2 gap-3">
+              <Select name="event_type" defaultValue="nota">
+                {EVENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </Select>
+              <Input type="date" name="event_date" defaultValue={new Date().toISOString().slice(0, 10)} />
+            </div>
+          ) : (
+            <input type="hidden" name="event_type" value="nota" />
+          )}
           <Textarea name="body" rows={2} required placeholder="Ej: Pasó a Desarrollo / Se acordó estimación de 5 h…" />
           {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
           <div className="mt-3 flex justify-end gap-2">
@@ -85,17 +98,19 @@ export function Timeline({ requirementId, notes }: { requirementId: string; note
               <div className="flex items-center gap-2">
                 <span className="text-xs font-medium text-muted">{formatDate(n.event_date)}</span>
                 <Badge color={EVENT_COLOR[n.event_type]}>{n.event_type}</Badge>
-                <button
-                  onClick={async () => {
-                    if (!confirm("¿Eliminar esta nota?")) return;
-                    await deleteRequirementNote(n.id, requirementId);
-                    router.refresh();
-                  }}
-                  className="ml-auto rounded p-1 text-muted hover:bg-red-50 hover:text-red-600"
-                  aria-label="Eliminar nota"
-                >
-                  <Trash2 size={13} />
-                </button>
+                {canManage && (
+                  <button
+                    onClick={async () => {
+                      if (!confirm("¿Eliminar esta nota?")) return;
+                      await deleteRequirementNote(n.id, requirementId);
+                      router.refresh();
+                    }}
+                    className="ml-auto rounded p-1 text-muted hover:bg-red-50 hover:text-red-600"
+                    aria-label="Eliminar nota"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                )}
               </div>
               <p className="mt-1 whitespace-pre-line text-sm text-ink">{n.body}</p>
               {n.author && (

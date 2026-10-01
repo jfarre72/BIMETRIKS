@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button, Card, ProgressBar, EmptyState, Badge } from "@/components/ui";
 import { deleteSprint, archiveSprint } from "@/lib/actions";
 import { SprintStatusBadge } from "@/components/shared/sprint-status";
-import { PriorityBadge } from "@/components/shared/req-badges";
+import { PriorityBadge, StatusBadge } from "@/components/shared/req-badges";
 import { StatusStepper } from "@/components/shared/status-stepper";
 import { formatHours, formatDate, pct } from "@/lib/utils";
 import type { Catalogs, Requirement, Sprint } from "@/lib/types";
@@ -62,7 +62,7 @@ export function SprintsClient({
     <div>
       <PageHeader
         title="Sprints"
-        subtitle="Bloques de trabajo — desplegá para ver y cambiar el estado de cada requerimiento"
+        subtitle={canManage ? "Bloques de trabajo — desplegá para ver y cambiar el estado de cada requerimiento" : "Bloques de trabajo — desplegá para ver el estado de cada requerimiento"}
         actions={canManage ? <Button onClick={() => setOpen(true)}><Plus size={16} /> Nuevo sprint</Button> : undefined}
       />
 
@@ -71,7 +71,7 @@ export function SprintsClient({
           title="Aún no hay sprints"
           description="Creá un sprint y luego asigná requerimientos desde el Backlog (arrastrando)."
           icon={<Layers size={28} />}
-          action={<Button onClick={() => setOpen(true)}><Plus size={16} /> Nuevo sprint</Button>}
+          action={canManage ? <Button onClick={() => setOpen(true)}><Plus size={16} /> Nuevo sprint</Button> : undefined}
         />
       ) : (
         <div className="space-y-4">
@@ -116,15 +116,19 @@ export function SprintsClient({
                     >
                       Ver detalle
                     </Link>
-                    <button onClick={() => { setEditing(s); setOpen(true); }} className="rounded-lg p-1.5 text-muted hover:bg-canvas hover:text-ink" aria-label="Editar sprint">
-                      <Pencil size={15} />
-                    </button>
-                    <button onClick={() => onArchive(s, true)} className="rounded-lg p-1.5 text-muted hover:bg-canvas hover:text-ink" aria-label="Archivar sprint" title="Archivar">
-                      <Archive size={15} />
-                    </button>
-                    <button onClick={() => onDeleteSprint(s)} className="rounded-lg p-1.5 text-muted hover:bg-red-50 hover:text-red-600" aria-label="Eliminar sprint">
-                      <Trash2 size={15} />
-                    </button>
+                    {canManage && (
+                      <>
+                        <button onClick={() => { setEditing(s); setOpen(true); }} className="rounded-lg p-1.5 text-muted hover:bg-canvas hover:text-ink" aria-label="Editar sprint">
+                          <Pencil size={15} />
+                        </button>
+                        <button onClick={() => onArchive(s, true)} className="rounded-lg p-1.5 text-muted hover:bg-canvas hover:text-ink" aria-label="Archivar sprint" title="Archivar">
+                          <Archive size={15} />
+                        </button>
+                        <button onClick={() => onDeleteSprint(s)} className="rounded-lg p-1.5 text-muted hover:bg-red-50 hover:text-red-600" aria-label="Eliminar sprint">
+                          <Trash2 size={15} />
+                        </button>
+                      </>
+                    )}
                   </span>
                 </div>
 
@@ -159,7 +163,9 @@ export function SprintsClient({
                                 <td className="px-2 py-2 font-medium text-ink">{r.title}</td>
                                 <td className="px-2 py-2"><PriorityBadge priority={r.priority} /></td>
                                 <td className="px-2 py-2">
-                                  <StatusStepper requirementId={r.id} value={r.status_id} statuses={statuses} sprintId={s.id} estimatedHours={Number(r.estimated_hours ?? 0)} />
+                                  {canManage
+                                    ? <StatusStepper requirementId={r.id} value={r.status_id} statuses={statuses} sprintId={s.id} estimatedHours={Number(r.estimated_hours ?? 0)} />
+                                    : <StatusBadge status={r.status} />}
                                 </td>
                                 <td className="px-2 py-2 text-right tabular text-muted">{formatHours(r.estimated_hours)}</td>
                                 <td className="px-2 py-2 text-right tabular font-medium">{formatHours(r.consumed_hours)}</td>
@@ -186,16 +192,18 @@ export function SprintsClient({
             {archived.map((s) => (
               <Card key={s.id} className="flex items-center justify-between px-4 py-2.5">
                 <span className="text-sm text-ink">{s.name}</span>
-                <button onClick={() => onArchive(s, false)} className="inline-flex items-center gap-1 text-xs font-medium text-brand hover:underline">
-                  <ArchiveRestore size={14} /> Restaurar
-                </button>
+                {canManage && (
+                  <button onClick={() => onArchive(s, false)} className="inline-flex items-center gap-1 text-xs font-medium text-brand hover:underline">
+                    <ArchiveRestore size={14} /> Restaurar
+                  </button>
+                )}
               </Card>
             ))}
           </div>
         </div>
       )}
 
-      <SprintForm open={open} onClose={() => { setOpen(false); setEditing(null); }} sprint={editing} />
+      {canManage && <SprintForm open={open} onClose={() => { setOpen(false); setEditing(null); }} sprint={editing} />}
     </div>
   );
 }
