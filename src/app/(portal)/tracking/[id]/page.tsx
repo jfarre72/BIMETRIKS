@@ -102,7 +102,7 @@ export default async function RequirementDetailPage({ params }: { params: { id: 
       {/* Timeline / notas debajo, a lo ancho */}
       <Card>
         <CardBody>
-          <Timeline requirementId={requirement.id} notes={notes} />
+          <Timeline requirementId={requirement.id} notes={notes} canManage={canManage} />
         </CardBody>
       </Card>
     </div>

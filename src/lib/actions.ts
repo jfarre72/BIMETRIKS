@@ -24,6 +24,13 @@ async function currentProfileRole(): Promise<string | null> {
   return (data as any)?.role ?? null;
 }
 
+const NO_PERMISSION = { ok: false, error: "No tenés permisos para realizar esta acción." } as const;
+
+/** true si el usuario autenticado es CLIENT (sólo lectura, salvo excepciones). */
+async function isClientUser(): Promise<boolean> {
+  return (await currentProfileRole()) === "CLIENT";
+}
+
 const emptyToNull = (v: unknown) => (v === "" || v === undefined ? null : v);
 
 // ---------------------------------------------------------------------------
@@ -377,6 +384,7 @@ async function syncSprintStatus(supabase: any, sprintId: string) {
 }
 
 export async function updateRequirementField(id: string, field: "status_id" | "priority_id", value: string) {
+  if (await isClientUser()) return NO_PERMISSION;
   const supabase = createClient();
   const uid = await currentProfileId();
 
@@ -401,6 +409,7 @@ export async function updateRequirementField(id: string, field: "status_id" | "p
 
 /** Carga/actualiza las horas estimadas de un requerimiento (queda registrado). */
 export async function updateEstimatedHours(requirementId: string, hours: number) {
+  if (await isClientUser()) return NO_PERMISSION;
   if (hours == null || hours < 0) return { ok: false, error: "Ingresá las horas estimadas" };
   const supabase = createClient();
   const uid = await currentProfileId();
@@ -423,7 +432,8 @@ export async function updateEstimatedHours(requirementId: string, hours: number)
 export async function addRequirementNote(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
   const reqId = String(formData.get("requirement_id") ?? "");
   const body = String(formData.get("body") ?? "").trim();
-  const eventType = String(formData.get("event_type") ?? "nota");
+  // El CLIENT sólo puede agregar notas simples (no eventos de estado/horas/etc.).
+  const eventType = (await isClientUser()) ? "nota" : String(formData.get("event_type") ?? "nota");
   const eventDate = String(formData.get("event_date") ?? "") || new Date().toISOString().slice(0, 10);
   if (!reqId || !body) return { ok: false, error: "Escribí una nota" };
   const supabase = createClient();
@@ -454,6 +464,7 @@ const sprintSchema = z.object({
 });
 
 export async function saveSprint(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  if (await isClientUser()) return NO_PERMISSION;
   const parsed = sprintSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { ok: false, error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
   const supabase = createClient();
@@ -474,6 +485,7 @@ export async function saveSprint(_prev: ActionResult | null, formData: FormData)
 }
 
 export async function assignToSprint(sprintId: string, requirementIds: string[]) {
+  if (await isClientUser()) return NO_PERMISSION;
   const supabase = createClient();
   const uid = await currentProfileId();
   const rows = requirementIds.map((requirement_id) => ({ sprint_id: sprintId, requirement_id, added_by: uid }));
@@ -501,6 +513,7 @@ export async function moveRequirement(
   targetSprintId: string | null,
   orderedIds: string[]
 ) {
+  if (await isClientUser()) return NO_PERMISSION;
   const supabase = createClient();
   const uid = await currentProfileId();
 
@@ -547,6 +560,7 @@ export async function moveRequirement(
 }
 
 export async function removeFromSprint(sprintId: string, requirementId: string) {
+  if (await isClientUser()) return NO_PERMISSION;
   const supabase = createClient();
   const { error } = await supabase
     .from("sprint_requirements")
@@ -592,6 +606,7 @@ export async function quickLogHours(
   hours: number,
   description?: string
 ) {
+  if (await isClientUser()) return NO_PERMISSION;
   if (!hours || hours <= 0) return { ok: false, error: "Ingresá las horas reales" };
   const supabase = createClient();
   const uid = await currentProfileId();
@@ -659,6 +674,7 @@ export async function deleteRequirement(id: string) {
 }
 
 export async function archiveSprint(id: string, archived: boolean) {
+  if (await isClientUser()) return NO_PERMISSION;
   const supabase = createClient();
   const { error } = await supabase
     .from("sprints")
@@ -690,6 +706,7 @@ export async function setContractedInvoice(id: string, path: string | null, name
 }
 
 export async function deleteSprint(id: string) {
+  if (await isClientUser()) return NO_PERMISSION;
   const supabase = createClient();
   const { error } = await supabase.from("sprints").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
@@ -720,6 +737,7 @@ export async function deleteContractedHours(id: string) {
 }
 
 export async function deleteRequirementNote(id: string, requirementId: string) {
+  if (await isClientUser()) return NO_PERMISSION;
   const supabase = createClient();
   const { error } = await supabase.from("requirement_notes").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
