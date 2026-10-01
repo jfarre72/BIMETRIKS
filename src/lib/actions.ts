@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { ACTIVE_PROJECT_COOKIE, getProjectId } from "@/lib/project";
 import { clearReadCache } from "@/lib/cache";
+import { MEETING_STATUS_NAMES } from "@/lib/requirement-kind";
 
 async function currentProfileId(): Promise<string | null> {
   const supabase = createClient();
@@ -51,6 +52,7 @@ const requirementSchema = z.object({
   estimated_hours: z.coerce.number().min(0).default(0),
   observations: z.preprocess(emptyToNull, z.string().nullable()),
   sprint_id: z.preprocess(emptyToNull, z.string().uuid().nullable()).optional(),
+  kind: z.enum(["REQ", "MEETING"]).optional(),
 });
 
 export type ActionResult = { ok: boolean; error?: string; id?: string; code?: string };
@@ -182,6 +184,13 @@ async function getProjectStatuses(supabase: any): Promise<StatusRow[]> {
  * desarrollo"), deja constancia de que pasó por todos los estados previos.
  * `reason` reemplaza el texto por defecto de la nota principal.
  */
+/** ¿El estado está habilitado para reuniones? */
+async function isMeetingStatus(supabase: any, statusId: string): Promise<boolean> {
+  const statuses = await getProjectStatuses(supabase);
+  const s = statuses.find((x) => x.id === statusId);
+  return !!s && MEETING_STATUS_NAMES.includes(norm(s.name));
+}
+
 async function changeStatus(
   supabase: any,
   requirementId: string,
@@ -189,9 +198,10 @@ async function changeStatus(
   authorId: string | null,
   reason?: string
 ): Promise<void> {
-  const { data: before } = await supabase.from("requirements").select("status_id").eq("id", requirementId).single();
+  const { data: before } = await supabase.from("requirements").select("status_id,kind").eq("id", requirementId).single();
   const oldId = (before as any)?.status_id ?? null;
   if (oldId === newStatusId) return;
+  const meeting = (before as any)?.kind === "MEETING";
 
   const { error } = await supabase
     .from("requirements")
@@ -206,7 +216,11 @@ async function changeStatus(
   // Salto hacia adelante: registrar los estados intermedios que se dan por cumplidos.
   if (oldS && newS && newS.sort_order > oldS.sort_order + 1) {
     const skipped = statuses.filter(
-      (s) => s.sort_order > oldS.sort_order && s.sort_order < newS.sort_order && !s.is_final
+      (s) =>
+        s.sort_order > oldS.sort_order &&
+        s.sort_order < newS.sort_order &&
+        !s.is_final &&
+        (!meeting || MEETING_STATUS_NAMES.includes(norm(s.name)))
     );
     if (skipped.length) {
       await logReqNote(
@@ -272,7 +286,7 @@ export async function saveRequirement(_prev: ActionResult | null, formData: Form
   const uid = await currentProfileId();
   const role = await currentProfileRole();
   const isClient = role === "CLIENT";
-  let { id, sprint_id, ...values } = parsed.data;
+  let { id, sprint_id, kind, ...values } = parsed.data;
   let sprintProvided = "sprint_id" in parsed.data;
 
   // El CLIENT sólo puede CREAR (nunca editar/priorizar). Se ignoran los campos
@@ -292,6 +306,22 @@ export async function saveRequirement(_prev: ActionResult | null, formData: Form
     };
     sprint_id = null;
     sprintProvided = false;
+    kind = "REQ";
+  }
+
+  // Reuniones: sólo el ADMIN las crea y el tipo no cambia al editar.
+  if (id) {
+    const { data: cur } = await supabase.from("requirements").select("kind").eq("id", id).single();
+    kind = (cur as any)?.kind ?? "REQ";
+  } else if (kind === "MEETING" && role !== "ADMIN") {
+    return { ok: false, error: "Sólo el administrador puede crear reuniones." };
+  }
+  if (kind === "MEETING") {
+    // Sin tipo/dashboard/módulo/validación: no pasan por el flujo de desarrollo.
+    values = { ...values, type_id: null, module: null, dashboard: null, validator_id: null };
+    if (values.status_id && !(await isMeetingStatus(supabase, values.status_id))) {
+      return { ok: false, error: "Las reuniones sólo pueden estar en Nuevo, Priorizado, Estimado o Finalizado." };
+    }
   }
 
   // Si el dashboard indicado es nuevo, lo agregamos al catálogo.
@@ -349,7 +379,7 @@ export async function saveRequirement(_prev: ActionResult | null, formData: Form
 
   const { data, error } = await supabase
     .from("requirements")
-    .insert({ ...values, project_id: projectId, sort_index: nextIndex, created_by: uid, updated_by: uid })
+    .insert({ ...values, kind: kind ?? "REQ", project_id: projectId, sort_index: nextIndex, created_by: uid, updated_by: uid })
     .select("id,code")
     .single();
   if (error) return { ok: false, error: error.message };
@@ -389,6 +419,10 @@ export async function updateRequirementField(id: string, field: "status_id" | "p
   const uid = await currentProfileId();
 
   if (field === "status_id") {
+    const { data: req } = await supabase.from("requirements").select("kind").eq("id", id).single();
+    if ((req as any)?.kind === "MEETING" && !(await isMeetingStatus(supabase, value))) {
+      return { ok: false, error: "Estado no válido para una reunión." };
+    }
     // changeStatus actualiza, registra el cambio (y los estados omitidos) y
     // recalcula el estado del sprint.
     await changeStatus(supabase, id, value, uid);

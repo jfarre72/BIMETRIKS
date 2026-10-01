@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, Input, EmptyState } from "@/components/ui";
-import { StatusBadge, PriorityBadge } from "@/components/shared/req-badges";
+import { StatusBadge, PriorityBadge, MeetingTag } from "@/components/shared/req-badges";
 import { formatHours } from "@/lib/utils";
 import type { Requirement } from "@/lib/types";
 
@@ -64,7 +64,7 @@ export function TrackingSelector({ requirements }: { requirements: Requirement[]
                         {r.code}
                       </Link>
                     </td>
-                    <td className="px-3 py-3 font-medium text-ink">{r.title}</td>
+                    <td className="px-3 py-3 font-medium text-ink"><span className="inline-flex flex-wrap items-center gap-1.5">{r.title} <MeetingTag kind={r.kind} /></span></td>
                     <td className="whitespace-nowrap px-3 py-3 text-muted">{r.area?.name ?? "—"}</td>
                     <td className="px-3 py-3"><PriorityBadge priority={r.priority} /></td>
                     <td className="px-3 py-3"><StatusBadge status={r.status} /></td>

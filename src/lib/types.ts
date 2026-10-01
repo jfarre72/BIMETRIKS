@@ -50,6 +50,8 @@ export interface Task {
 export interface Requirement {
   id: string;
   code: string;
+  /** REQ = requerimiento común · MEETING = reunión (código REU-####). */
+  kind?: "REQ" | "MEETING";
   title: string;
   description: string | null;
   module: string | null;

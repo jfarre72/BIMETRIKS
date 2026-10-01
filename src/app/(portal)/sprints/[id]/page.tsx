@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardBody, CardHeader, CardTitle, ProgressBar, EmptyState, Badge } from "@/components/ui";
 import { StatCard } from "@/components/ui/stat-card";
 import { SprintStatusBadge } from "@/components/shared/sprint-status";
-import { PriorityBadge, StatusBadge } from "@/components/shared/req-badges";
+import { PriorityBadge, StatusBadge, MeetingTag } from "@/components/shared/req-badges";
 import { StatusStepper } from "@/components/shared/status-stepper";
 import { formatHours, formatDate, pct } from "@/lib/utils";
 
@@ -80,9 +80,9 @@ export default async function SprintDetailPage({ params }: { params: { id: strin
                       <td className="py-2.5 pr-3 font-mono text-xs font-semibold text-brand">
                         <Link href={`/tracking/${r.id}`} className="hover:underline">{r.code}</Link>
                       </td>
-                      <td className="px-3 py-2.5 font-medium text-ink">{r.title}</td>
+                      <td className="px-3 py-2.5 font-medium text-ink"><span className="inline-flex flex-wrap items-center gap-1.5">{r.title} <MeetingTag kind={r.kind} /></span></td>
                       <td className="px-3 py-2.5"><PriorityBadge priority={r.priority} /></td>
-                      <td className="px-3 py-2.5">{canManage ? <StatusStepper requirementId={r.id} value={r.status_id} statuses={catalogs.statuses} sprintId={sprint.id} estimatedHours={Number(r.estimated_hours ?? 0)} /> : <StatusBadge status={r.status} />}</td>
+                      <td className="px-3 py-2.5">{canManage ? <StatusStepper requirementId={r.id} value={r.status_id} statuses={catalogs.statuses} sprintId={sprint.id} estimatedHours={Number(r.estimated_hours ?? 0)} kind={r.kind} /> : <StatusBadge status={r.status} />}</td>
                       <td className="px-3 py-2.5 text-right tabular text-muted">{formatHours(r.estimated_hours)}</td>
                       <td className="px-3 py-2.5 text-right tabular font-medium">{formatHours(r.consumed_hours)}</td>
                     </tr>

@@ -35,3 +35,9 @@ export function CreatorBadge({ creator, clientName }: { creator?: Requirement["c
     </Badge>
   );
 }
+
+/** Distintivo para las reuniones (requerimientos de tipo MEETING). */
+export function MeetingTag({ kind }: { kind?: string | null }) {
+  if (kind !== "MEETING") return null;
+  return <Badge color="#0891B2">Reunión</Badge>;
+}

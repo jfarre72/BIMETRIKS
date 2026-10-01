@@ -7,6 +7,7 @@ import { updateRequirementField, quickLogHours, updateEstimatedHours } from "@/l
 import { Button, Input, Label } from "@/components/ui";
 import { Modal } from "@/components/ui/sheet";
 import type { ReqStatus } from "@/lib/types";
+import { statusesForKind } from "@/lib/requirement-kind";
 
 const isEstimado = (s: ReqStatus | null | undefined) =>
   !!s && s.name.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim() === "estimado";
@@ -16,17 +17,21 @@ const isEstimado = (s: ReqStatus | null | undefined) =>
 export function StatusSelect({
   requirementId,
   value,
-  statuses,
+  statuses: allStatuses,
   sprintId = null,
   estimatedHours = 0,
+  kind = "REQ",
 }: {
   requirementId: string;
   value: string | null;
   statuses: ReqStatus[];
   sprintId?: string | null;
   estimatedHours?: number;
+  /** MEETING = reunión: sólo Nuevo / Priorizado / Estimado / Finalizado. */
+  kind?: string | null;
 }) {
   const router = useRouter();
+  const statuses = statusesForKind(allStatuses, kind);
   const [current, setCurrent] = useState(value ?? "");
   const [finalOpen, setFinalOpen] = useState(false);
   const [estOpen, setEstOpen] = useState(false);

@@ -24,7 +24,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Layers, Inbox, Trash2, Pencil, ExternalLink, ChevronDown, ChevronRight } from "lucide-react";
 import { Card } from "@/components/ui";
-import { PriorityBadge, StatusBadge, creatorOrigin } from "@/components/shared/req-badges";
+import { PriorityBadge, StatusBadge, MeetingTag, creatorOrigin } from "@/components/shared/req-badges";
 import { StatusStepper } from "@/components/shared/status-stepper";
 import { SprintStatusBadge } from "@/components/shared/sprint-status";
 import { formatHours } from "@/lib/utils";
@@ -354,7 +354,9 @@ function Row({
         </span>
       </td>
       <td className="whitespace-nowrap px-2 py-2 font-mono text-xs font-semibold text-brand">{req.code}</td>
-      <td className="px-2 py-2 font-medium text-ink">{req.title}</td>
+      <td className="px-2 py-2 font-medium text-ink">
+        <span className="inline-flex flex-wrap items-center gap-1.5">{req.title} <MeetingTag kind={req.kind} /></span>
+      </td>
       <td className="whitespace-nowrap px-2 py-2">
         <span className="inline-flex items-center gap-1.5 text-sm text-ink">
           <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: origin.color }} />
@@ -365,7 +367,7 @@ function Row({
       <td className="px-2 py-2"><PriorityBadge priority={req.priority} /></td>
       <td className="px-2 py-2">
         {canManage ? (
-          <StatusStepper requirementId={req.id} value={req.status_id} statuses={statuses} sprintId={req.sprint?.id ?? null} estimatedHours={Number(req.estimated_hours ?? 0)} onPatch={onPatch} />
+          <StatusStepper requirementId={req.id} value={req.status_id} statuses={statuses} sprintId={req.sprint?.id ?? null} estimatedHours={Number(req.estimated_hours ?? 0)} kind={req.kind} onPatch={onPatch} />
         ) : (
           <StatusBadge status={req.status} />
         )}

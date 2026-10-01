@@ -9,6 +9,7 @@ import { Combobox } from "@/components/shared/combobox";
 import { saveRequirement, type ActionResult } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/client";
 import type { Catalogs, Requirement } from "@/lib/types";
+import { statusesForKind, type RequirementKind } from "@/lib/requirement-kind";
 
 export function RequirementForm({
   open,
@@ -17,6 +18,7 @@ export function RequirementForm({
   requirement,
   onSaved,
   clientMode = false,
+  kind: newKind = "REQ",
 }: {
   open: boolean;
   onClose: () => void;
@@ -26,6 +28,8 @@ export function RequirementForm({
   onSaved?: (req: Requirement, isEdit: boolean) => void;
   /** Rol CLIENT: formulario reducido (sólo carga; el staff prioriza). */
   clientMode?: boolean;
+  /** Tipo a crear (al editar se respeta el del requerimiento). MEETING = reunión. */
+  kind?: RequirementKind;
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -87,23 +91,33 @@ export function RequirementForm({
   }
 
   const isEdit = Boolean(requirement?.id);
+  const kind: RequirementKind = isEdit ? (requirement?.kind ?? "REQ") : newKind;
+  const meeting = kind === "MEETING";
+  const statuses = statusesForKind(catalogs.statuses, kind);
 
   return (
     <Modal
       open={open}
       onClose={onClose}
       width="max-w-4xl"
-      title={isEdit ? `Editar ${requirement?.code}` : "Nuevo requerimiento"}
+      title={isEdit ? `Editar ${requirement?.code}` : meeting ? "Nueva reunión" : "Nuevo requerimiento"}
     >
-      {!isEdit && <p className="-mt-2 mb-4 text-sm text-muted">El ID (REQ-####) se genera automáticamente.</p>}
+      {!isEdit && (
+        <p className="-mt-2 mb-4 text-sm text-muted">
+          {meeting
+            ? "El ID (REU-####) se genera automáticamente. Las horas de la reunión se contabilizan en el sprint y contra las horas contratadas."
+            : "El ID (REQ-####) se genera automáticamente."}
+        </p>
+      )}
       <form ref={formRef} onSubmit={onSubmit}>
         {isEdit && <input type="hidden" name="id" defaultValue={requirement?.id} />}
+        {!isEdit && <input type="hidden" name="kind" value={kind} />}
 
         {/* Grilla horizontal: aprovecha el ancho para no scrollear verticalmente. */}
         <div className="grid grid-cols-1 gap-x-5 gap-y-4 md:grid-cols-3">
           <div className="md:col-span-3">
             <Label>Título *</Label>
-            <Input name="title" required defaultValue={requirement?.title ?? ""} placeholder="Ej: Cuadrar m² despachados" />
+            <Input name="title" required defaultValue={requirement?.title ?? ""} placeholder={meeting ? "Ej: Reuniones semanales de seguimiento" : "Ej: Cuadrar m² despachados"} />
           </div>
 
           <Field label="Área / Capítulo">
@@ -112,12 +126,16 @@ export function RequirementForm({
               {catalogs.areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </Select>
           </Field>
-          <Field label="Dashboard">
-            <Combobox name="dashboard" options={catalogs.dashboards} defaultValue={requirement?.dashboard ?? ""} placeholder="Elegí o escribí uno nuevo…" />
-          </Field>
-          <Field label="Página / Módulo">
-            <Input name="module" defaultValue={requirement?.module ?? ""} />
-          </Field>
+          {!meeting && (
+            <>
+              <Field label="Dashboard">
+                <Combobox name="dashboard" options={catalogs.dashboards} defaultValue={requirement?.dashboard ?? ""} placeholder="Elegí o escribí uno nuevo…" />
+              </Field>
+              <Field label="Página / Módulo">
+                <Input name="module" defaultValue={requirement?.module ?? ""} />
+              </Field>
+            </>
+          )}
 
           {clientMode ? (
             // El cliente ve estos campos fijos (los define el staff al priorizar).
@@ -142,12 +160,14 @@ export function RequirementForm({
                 </Select>
               </Field>
 
-              <Field label="Tipo">
-                <Select name="type_id" defaultValue={requirement?.type_id ?? ""}>
-                  <option value="">—</option>
-                  {catalogs.types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                </Select>
-              </Field>
+              {!meeting && (
+                <Field label="Tipo">
+                  <Select name="type_id" defaultValue={requirement?.type_id ?? ""}>
+                    <option value="">—</option>
+                    {catalogs.types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </Select>
+                </Field>
+              )}
               <Field label="Prioridad">
                 <Select name="priority_id" defaultValue={requirement?.priority_id ?? ""}>
                   <option value="">—</option>
@@ -155,9 +175,9 @@ export function RequirementForm({
                 </Select>
               </Field>
               <Field label="Estado">
-                <Select name="status_id" defaultValue={requirement?.status_id ?? catalogs.statuses[0]?.id ?? ""}>
+                <Select name="status_id" defaultValue={requirement?.status_id ?? statuses[0]?.id ?? ""}>
                   <option value="">—</option>
-                  {catalogs.statuses.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  {statuses.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </Select>
               </Field>
 
@@ -167,12 +187,14 @@ export function RequirementForm({
                   {catalogs.people.map((p) => <option key={p.id} value={p.id}>{p.role ? `${p.name} · ${p.role}` : p.name}</option>)}
                 </Select>
               </Field>
-              <Field label="Responsable de validación">
-                <Select name="validator_id" defaultValue={requirement?.validator_id ?? ""}>
-                  <option value="">—</option>
-                  {catalogs.people.map((p) => <option key={p.id} value={p.id}>{p.role ? `${p.name} · ${p.role}` : p.name}</option>)}
-                </Select>
-              </Field>
+              {!meeting && (
+                <Field label="Responsable de validación">
+                  <Select name="validator_id" defaultValue={requirement?.validator_id ?? ""}>
+                    <option value="">—</option>
+                    {catalogs.people.map((p) => <option key={p.id} value={p.id}>{p.role ? `${p.name} · ${p.role}` : p.name}</option>)}
+                  </Select>
+                </Field>
+              )}
               <Field label="Horas estimadas">
                 <Input name="estimated_hours" type="number" step="0.5" min="0" defaultValue={requirement?.estimated_hours ?? 0} />
               </Field>
@@ -231,7 +253,7 @@ export function RequirementForm({
           <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
           <Button type="submit" disabled={pending}>
             {pending && <Loader2 size={16} className="animate-spin" />}
-            {isEdit ? "Guardar cambios" : "Crear requerimiento"}
+            {isEdit ? "Guardar cambios" : meeting ? "Crear reunión" : "Crear requerimiento"}
           </Button>
         </div>
       </form>
@@ -268,6 +290,7 @@ function buildOptimistic(
   return {
     id,
     code,
+    kind: base?.kind ?? (v("kind") === "MEETING" ? "MEETING" : "REQ"),
     title: v("title") ?? "",
     description: v("description"),
     module: v("module"),
