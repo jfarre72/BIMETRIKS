@@ -14,8 +14,8 @@ import type { BillingBlock } from "@/lib/queries";
 export function FacturacionClient({ blocks }: { blocks: BillingBlock[] }) {
   const totalContracted = blocks.reduce((a, b) => a + b.contracted, 0);
   const totalConsumed = blocks.reduce((a, b) => a + b.consumed, 0);
-  const invoiced = blocks.filter((b) => b.invoiced).reduce((a, b) => a + b.contracted, 0);
-  const paid = blocks.filter((b) => b.paid).reduce((a, b) => a + b.contracted, 0);
+  const invoiced = blocks.filter((b) => b.invoiced).reduce((a, b) => a + b.consumed, 0);
+  const paid = blocks.filter((b) => b.paid).reduce((a, b) => a + b.consumed, 0);
 
   return (
     <div>
