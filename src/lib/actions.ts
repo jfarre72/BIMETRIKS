@@ -810,6 +810,18 @@ export async function setContractedInvoice(id: string, path: string | null, name
   return { ok: true };
 }
 
+export async function setContractedObservation(id: string, observation: string) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("contracted_hours")
+    .update({ observation: observation.trim() || null })
+    .eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  clearReadCache();
+  revalidatePath("/facturacion");
+  return { ok: true };
+}
+
 export async function deleteSprint(id: string) {
   if (await isClientUser()) return NO_PERMISSION;
   const supabase = createClient();
