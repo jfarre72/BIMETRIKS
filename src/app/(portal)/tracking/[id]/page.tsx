@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { getRequirement, getRequirementNotes, getAttachments, getCatalogs, getChecklist, getCurrentProfile, getClientName } from "@/lib/queries";
+import { getRequirement, getRequirementNotes, getAttachments, getCatalogs, getChecklist, getCurrentProfile, getClientName, getRequirementTimeEntries } from "@/lib/queries";
 import { isStaffRole } from "@/lib/auth";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardBody } from "@/components/ui";
@@ -12,28 +12,32 @@ import { AttachmentUploader } from "@/components/shared/attachment-uploader";
 import { formatHours, formatDate } from "@/lib/utils";
 import { Timeline } from "./timeline";
 import { EditRequirementButton } from "./edit-requirement";
+import { RequirementHours } from "./requirement-hours";
 
 export const dynamic = "force-dynamic";
 
 export default async function RequirementDetailPage({ params }: { params: { id: string } }) {
   const requirement = await getRequirement(params.id);
   if (!requirement) notFound();
-  const [notes, attachments, catalogs, checklist, profile, clientName] = await Promise.all([
+  const [notes, attachments, catalogs, checklist, profile, clientName, timeEntries] = await Promise.all([
     getRequirementNotes(params.id),
     getAttachments(params.id),
     getCatalogs(),
     getChecklist(params.id),
     getCurrentProfile(),
     getClientName(),
+    getRequirementTimeEntries(params.id),
   ]);
   const canManage = isStaffRole(profile?.role);
+  const isAdmin = profile?.role === "ADMIN";
+  const isFinal = !!requirement.status?.is_final;
 
   const meta: [string, React.ReactNode][] = [
     ["Área", requirement.area?.name ?? "—"],
     ["Tipo", requirement.kind === "MEETING" ? <MeetingTag key="t" kind={requirement.kind} /> : requirement.type ? <TypeBadge type={requirement.type} /> : "—"],
     ["Prioridad", <PriorityBadge key="p" priority={requirement.priority} />],
     ["Estado", canManage
-      ? <StatusSelect key="s" requirementId={requirement.id} value={requirement.status_id} statuses={catalogs.statuses} sprintId={requirement.sprint?.id ?? null} estimatedHours={Number(requirement.estimated_hours ?? 0)} kind={requirement.kind} />
+      ? <StatusSelect key="s" requirementId={requirement.id} value={requirement.status_id} statuses={catalogs.statuses} sprintId={requirement.sprint?.id ?? null} estimatedHours={Number(requirement.estimated_hours ?? 0)} consumedHours={Number(requirement.consumed_hours ?? 0)} kind={requirement.kind} />
       : <StatusBadge key="s" status={requirement.status} />],
     ["Origen", <CreatorBadge key="o" creator={requirement.creator} clientName={clientName} />],
     ["Creado por", requirement.creator?.full_name || requirement.creator?.username || "—"],
@@ -80,6 +84,21 @@ export default async function RequirementDetailPage({ params }: { params: { id: 
               <p className="mt-1 text-sm text-ink">{requirement.observations}</p>
             </div>
           )}
+        </CardBody>
+      </Card>
+
+      {/* Registro de horas (carga parcial, sólo ADMIN) */}
+      <Card className="mb-4">
+        <CardBody>
+          <RequirementHours
+            requirementId={requirement.id}
+            estimated={Number(requirement.estimated_hours ?? 0)}
+            consumed={Number(requirement.consumed_hours ?? 0)}
+            entries={timeEntries}
+            statusName={requirement.status?.name}
+            canLog={isAdmin}
+            isFinal={isFinal}
+          />
         </CardBody>
       </Card>
 

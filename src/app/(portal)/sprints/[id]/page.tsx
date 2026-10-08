@@ -82,7 +82,7 @@ export default async function SprintDetailPage({ params }: { params: { id: strin
                       </td>
                       <td className="px-3 py-2.5 font-medium text-ink"><span className="inline-flex flex-wrap items-center gap-1.5">{r.title} <MeetingTag kind={r.kind} /></span></td>
                       <td className="px-3 py-2.5"><PriorityBadge priority={r.priority} /></td>
-                      <td className="px-3 py-2.5">{canManage ? <StatusStepper requirementId={r.id} value={r.status_id} statuses={catalogs.statuses} sprintId={sprint.id} estimatedHours={Number(r.estimated_hours ?? 0)} kind={r.kind} /> : <StatusBadge status={r.status} />}</td>
+                      <td className="px-3 py-2.5">{canManage ? <StatusStepper requirementId={r.id} value={r.status_id} statuses={catalogs.statuses} sprintId={sprint.id} estimatedHours={Number(r.estimated_hours ?? 0)} consumedHours={Number(r.consumed_hours ?? 0)} kind={r.kind} /> : <StatusBadge status={r.status} />}</td>
                       <td className="px-3 py-2.5 text-right tabular text-muted">{formatHours(r.estimated_hours)}</td>
                       <td className="px-3 py-2.5 text-right tabular font-medium">{formatHours(r.consumed_hours)}</td>
                     </tr>

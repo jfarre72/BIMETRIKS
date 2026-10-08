@@ -103,6 +103,16 @@ export interface TimeEntry {
   sprint?: { name: string } | null;
 }
 
+/** Carga de horas parcial sobre un requerimiento (detalle del requerimiento). */
+export interface RequirementTimeEntry {
+  id: string;
+  entry_date: string;
+  hours: number;
+  description: string | null;
+  created_at: string;
+  creator?: { full_name: string | null; username: string | null } | null;
+}
+
 export interface ContractedHours {
   id: string;
   entry_date: string;

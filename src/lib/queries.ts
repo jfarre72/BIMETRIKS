@@ -6,6 +6,7 @@ import type {
   ContractedHours,
   Requirement,
   RequirementNote,
+  RequirementTimeEntry,
   Sprint,
   TimeEntry,
 } from "@/lib/types";
@@ -94,6 +95,18 @@ export async function getRequirementNotes(reqId: string): Promise<RequirementNot
     .select("id,event_type,event_date,body,created_at,author:profiles(id,username,full_name,role)")
     .eq("requirement_id", reqId)
     .order("event_date", { ascending: false })
+    .order("created_at", { ascending: false });
+  return (data as any) ?? [];
+}
+
+/** Horas registradas en un requerimiento (más recientes primero). */
+export async function getRequirementTimeEntries(reqId: string): Promise<RequirementTimeEntry[]> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("time_entries")
+    .select("id,entry_date,hours,description,created_at,creator:profiles(full_name,username)")
+    .eq("requirement_id", reqId)
+    .order("entry_date", { ascending: false })
     .order("created_at", { ascending: false });
   return (data as any) ?? [];
 }

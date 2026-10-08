@@ -164,7 +164,7 @@ export function SprintsClient({
                                 <td className="px-2 py-2"><PriorityBadge priority={r.priority} /></td>
                                 <td className="px-2 py-2">
                                   {canManage
-                                    ? <StatusStepper requirementId={r.id} value={r.status_id} statuses={statuses} sprintId={s.id} estimatedHours={Number(r.estimated_hours ?? 0)} kind={r.kind} />
+                                    ? <StatusStepper requirementId={r.id} value={r.status_id} statuses={statuses} sprintId={s.id} estimatedHours={Number(r.estimated_hours ?? 0)} consumedHours={Number(r.consumed_hours ?? 0)} kind={r.kind} />
                                     : <StatusBadge status={r.status} />}
                                 </td>
                                 <td className="px-2 py-2 text-right tabular text-muted">{formatHours(r.estimated_hours)}</td>
