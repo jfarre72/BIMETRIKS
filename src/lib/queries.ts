@@ -321,6 +321,7 @@ export interface BillingBlock {
   invoicePath: string | null;
   invoiceName: string | null;
   invoiceUrl: string | null;
+  observation: string;
 }
 
 export async function getBillingBlocks(): Promise<BillingBlock[]> {
@@ -332,7 +333,7 @@ async function _getBillingBlocks(): Promise<BillingBlock[]> {
   const [{ data: blocks }, { data: total }] = await Promise.all([
     supabase
       .from("contracted_hours")
-      .select("id,entry_date,hours,note,invoiced,paid,invoice_path,invoice_name")
+      .select("id,entry_date,hours,note,invoiced,paid,invoice_path,invoice_name,observation")
       .eq("project_id", PROJECT_ID)
       .order("entry_date", { ascending: true }),
     supabase.from("v_project_hours").select("consumed_hours").eq("project_id", PROJECT_ID).single(),
@@ -349,6 +350,7 @@ async function _getBillingBlocks(): Promise<BillingBlock[]> {
       id: b.id, label, entry_date: b.entry_date, contracted, consumed,
       invoiced: !!b.invoiced, paid: !!b.paid,
       invoicePath: b.invoice_path ?? null, invoiceName: b.invoice_name ?? null, invoiceUrl,
+      observation: b.observation ?? "",
     };
   });
 }

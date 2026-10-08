@@ -28,7 +28,7 @@ gestión de horas contratadas/consumidas y reportería ejecutiva.
 
 3. Aplicar el esquema y los datos base en Supabase (SQL Editor o CLI):
    ```
-   supabase/migrations/0001_init.sql … 0015_multi_client.sql   # en orden
+   supabase/migrations/0001_init.sql … 0017_billing_observation.sql   # en orden
    supabase/seed.sql                   # primer cliente, proyecto y catálogos base
    ```
 

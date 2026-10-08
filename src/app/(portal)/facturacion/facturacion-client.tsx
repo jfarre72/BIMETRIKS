@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardBody, CardHeader, CardTitle, Badge, EmptyState } from "@/components/ui";
 import { StatCard } from "@/components/ui/stat-card";
 import { formatHours, formatDate } from "@/lib/utils";
-import { toggleContractedFlag, setContractedInvoice } from "@/lib/actions";
+import { toggleContractedFlag, setContractedInvoice, setContractedObservation } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/client";
 import type { BillingBlock } from "@/lib/queries";
 
@@ -45,6 +45,7 @@ export function FacturacionClient({ blocks }: { blocks: BillingBlock[] }) {
                     <th className="px-3 py-2 text-center">Facturadas</th>
                     <th className="px-3 py-2 text-center">Pagadas</th>
                     <th className="px-3 py-2">Factura</th>
+                    <th className="px-3 py-2">Observación</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -65,6 +66,8 @@ function Row({ block }: { block: BillingBlock }) {
   const [invoiced, setInvoiced] = useState(block.invoiced);
   const [paid, setPaid] = useState(block.paid);
   const [busy, setBusy] = useState(false);
+  const [observation, setObservation] = useState(block.observation);
+  const [obsState, setObsState] = useState<"idle" | "saving" | "error">("idle");
   const [, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -75,6 +78,14 @@ function Row({ block }: { block: BillingBlock }) {
       await toggleContractedFlag(block.id, field, value);
       router.refresh();
     });
+  }
+
+  async function saveObservation() {
+    if (observation.trim() === block.observation.trim()) return;
+    setObsState("saving");
+    const res = await setContractedObservation(block.id, observation);
+    setObsState(res.ok ? "idle" : "error");
+    if (res.ok) router.refresh();
   }
 
   async function uploadInvoice(file: File) {
@@ -127,6 +138,18 @@ function Row({ block }: { block: BillingBlock }) {
           </button>
         )}
         <input ref={inputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => e.target.files?.[0] && uploadInvoice(e.target.files[0])} />
+      </td>
+      <td className="min-w-[220px] px-3 py-2.5">
+        <textarea
+          value={observation}
+          onChange={(e) => { setObservation(e.target.value); if (obsState === "error") setObsState("idle"); }}
+          onBlur={saveObservation}
+          rows={1}
+          placeholder="Agregar observación…"
+          className={`w-full resize-y rounded-lg border bg-transparent px-2 py-1 text-xs text-ink placeholder:text-muted focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand/30 ${obsState === "error" ? "border-red-400" : "border-line"}`}
+        />
+        {obsState === "saving" && <p className="mt-0.5 text-[11px] text-muted">Guardando…</p>}
+        {obsState === "error" && <p className="mt-0.5 text-[11px] text-red-600">No se pudo guardar</p>}
       </td>
     </tr>
   );
