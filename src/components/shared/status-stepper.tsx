@@ -7,6 +7,7 @@ import { updateRequirementField, quickLogHours, updateEstimatedHours } from "@/l
 import { Badge, Button, Input, Label } from "@/components/ui";
 import { Modal } from "@/components/ui/sheet";
 import type { ReqStatus } from "@/lib/types";
+import { formatHours } from "@/lib/utils";
 import { statusesForKind } from "@/lib/requirement-kind";
 
 const isEstimado = (s: ReqStatus | null | undefined) =>
@@ -21,6 +22,7 @@ export function StatusStepper({
   statuses: allStatuses,
   sprintId = null,
   estimatedHours = 0,
+  consumedHours = 0,
   kind = "REQ",
   onPatch,
 }: {
@@ -29,6 +31,8 @@ export function StatusStepper({
   statuses: ReqStatus[];
   sprintId?: string | null;
   estimatedHours?: number;
+  /** Horas ya registradas: si hay, al finalizar sólo se piden las restantes. */
+  consumedHours?: number;
   /** MEETING = reunión: sólo Nuevo / Priorizado / Estimado / Finalizado. */
   kind?: string | null;
   /** Actualización optimista del requerimiento en el listado. */
@@ -39,7 +43,11 @@ export function StatusStepper({
   const [current, setCurrent] = useState(value ?? "");
   const [finalOpen, setFinalOpen] = useState(false);
   const [estOpen, setEstOpen] = useState(false);
-  const [hours, setHours] = useState(String(estimatedHours || ""));
+  // Con horas ya registradas durante el desarrollo, al finalizar no se vuelve a
+  // cargar el estimado (duplicaría): sólo se agregan las que falten (0 = ninguna).
+  const hasLogged = consumedHours > 0;
+  const finalDefault = hasLogged ? "0" : String(estimatedHours || "");
+  const [hours, setHours] = useState(finalDefault);
   const [estHours, setEstHours] = useState(String(estimatedHours || ""));
   const [saving, setSaving] = useState(false);
 
@@ -55,7 +63,7 @@ export function StatusStepper({
     setCurrent(target.id); // instantáneo
     onPatch?.(requirementId, { status_id: target.id }); // reflejo optimista en el listado
     if (target.is_final) {
-      setHours(String(estimatedHours || ""));
+      setHours(finalDefault);
       setFinalOpen(true);
     } else if (isEstimado(target) && !(estimatedHours > 0)) {
       // Al pasar a "Estimado" sin horas cargadas, pedirlas.
@@ -69,6 +77,8 @@ export function StatusStepper({
 
   async function saveHours(e: React.FormEvent) {
     e.preventDefault();
+    // 0 con horas ya registradas = no hay nada más para cargar.
+    if (!(Number(hours) > 0)) { setFinalOpen(false); return; }
     setSaving(true);
     await quickLogHours(requirementId, sprintId, Number(hours));
     setSaving(false);
@@ -100,9 +110,13 @@ export function StatusStepper({
 
       <Modal open={finalOpen} onClose={() => setFinalOpen(false)} title="Horas reales al finalizar">
         <form onSubmit={saveHours} className="space-y-3">
-          <p className="text-sm text-muted">Por defecto se cargan las horas estimadas. Podés ajustarlas.</p>
+          <p className="text-sm text-muted">
+            {hasLogged
+              ? `Ya hay ${formatHours(consumedHours)} registradas (estimado ${formatHours(estimatedHours)}). Si quedaron horas sin cargar, ingresalas; si no, dejá 0.`
+              : "Por defecto se cargan las horas estimadas. Podés ajustarlas."}
+          </p>
           <div>
-            <Label>Horas reales</Label>
+            <Label>{hasLogged ? "Horas adicionales" : "Horas reales"}</Label>
             <Input type="number" step="0.25" min="0" value={hours} onChange={(e) => setHours(e.target.value)} autoFocus required />
           </div>
           <div className="flex justify-end">

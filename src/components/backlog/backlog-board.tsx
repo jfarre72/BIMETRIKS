@@ -367,7 +367,7 @@ function Row({
       <td className="px-2 py-2"><PriorityBadge priority={req.priority} /></td>
       <td className="px-2 py-2">
         {canManage ? (
-          <StatusStepper requirementId={req.id} value={req.status_id} statuses={statuses} sprintId={req.sprint?.id ?? null} estimatedHours={Number(req.estimated_hours ?? 0)} kind={req.kind} onPatch={onPatch} />
+          <StatusStepper requirementId={req.id} value={req.status_id} statuses={statuses} sprintId={req.sprint?.id ?? null} estimatedHours={Number(req.estimated_hours ?? 0)} consumedHours={Number(req.consumed_hours ?? 0)} kind={req.kind} onPatch={onPatch} />
         ) : (
           <StatusBadge status={req.status} />
         )}

@@ -7,6 +7,7 @@ import { updateRequirementField, quickLogHours, updateEstimatedHours } from "@/l
 import { Button, Input, Label } from "@/components/ui";
 import { Modal } from "@/components/ui/sheet";
 import type { ReqStatus } from "@/lib/types";
+import { formatHours } from "@/lib/utils";
 import { statusesForKind } from "@/lib/requirement-kind";
 
 const isEstimado = (s: ReqStatus | null | undefined) =>
@@ -20,6 +21,7 @@ export function StatusSelect({
   statuses: allStatuses,
   sprintId = null,
   estimatedHours = 0,
+  consumedHours = 0,
   kind = "REQ",
 }: {
   requirementId: string;
@@ -27,6 +29,8 @@ export function StatusSelect({
   statuses: ReqStatus[];
   sprintId?: string | null;
   estimatedHours?: number;
+  /** Horas ya registradas: si hay, al finalizar sólo se piden las restantes. */
+  consumedHours?: number;
   /** MEETING = reunión: sólo Nuevo / Priorizado / Estimado / Finalizado. */
   kind?: string | null;
 }) {
@@ -35,7 +39,11 @@ export function StatusSelect({
   const [current, setCurrent] = useState(value ?? "");
   const [finalOpen, setFinalOpen] = useState(false);
   const [estOpen, setEstOpen] = useState(false);
-  const [hours, setHours] = useState(String(estimatedHours || ""));
+  // Con horas ya registradas durante el desarrollo, al finalizar no se vuelve a
+  // cargar el estimado (duplicaría): sólo se agregan las que falten (0 = ninguna).
+  const hasLogged = consumedHours > 0;
+  const finalDefault = hasLogged ? "0" : String(estimatedHours || "");
+  const [hours, setHours] = useState(finalDefault);
   const [estHours, setEstHours] = useState(String(estimatedHours || ""));
   const [saving, setSaving] = useState(false);
   const color = statuses.find((s) => s.id === current)?.color ?? "#64748B";
@@ -44,7 +52,7 @@ export function StatusSelect({
     const nextId = e.target.value;
     const target = statuses.find((s) => s.id === nextId);
     setCurrent(nextId); // instantáneo
-    if (target?.is_final) { setHours(String(estimatedHours || "")); setFinalOpen(true); }
+    if (target?.is_final) { setHours(finalDefault); setFinalOpen(true); }
     else if (isEstimado(target) && !(estimatedHours > 0)) { setEstHours(""); setEstOpen(true); }
     // Persistimos y refrescamos para reflejar el recálculo del estado del sprint.
     await updateRequirementField(requirementId, "status_id", nextId);
@@ -53,6 +61,8 @@ export function StatusSelect({
 
   async function saveHours(e: React.FormEvent) {
     e.preventDefault();
+    // 0 con horas ya registradas = no hay nada más para cargar.
+    if (!(Number(hours) > 0)) { setFinalOpen(false); return; }
     setSaving(true);
     const res = await quickLogHours(requirementId, sprintId, Number(hours));
     setSaving(false);
@@ -98,9 +108,13 @@ export function StatusSelect({
 
       <Modal open={finalOpen} onClose={() => setFinalOpen(false)} title="Horas reales al finalizar">
         <form onSubmit={saveHours} className="space-y-3" onClick={(e) => e.stopPropagation()}>
-          <p className="text-sm text-muted">Por defecto se cargan las horas estimadas. Podés ajustarlas.</p>
+          <p className="text-sm text-muted">
+            {hasLogged
+              ? `Ya hay ${formatHours(consumedHours)} registradas (estimado ${formatHours(estimatedHours)}). Si quedaron horas sin cargar, ingresalas; si no, dejá 0.`
+              : "Por defecto se cargan las horas estimadas. Podés ajustarlas."}
+          </p>
           <div>
-            <Label>Horas reales</Label>
+            <Label>{hasLogged ? "Horas adicionales" : "Horas reales"}</Label>
             <Input type="number" step="0.25" min="0" value={hours} onChange={(e) => setHours(e.target.value)} autoFocus required />
           </div>
           <div className="flex justify-end">

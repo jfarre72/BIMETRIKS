@@ -663,6 +663,77 @@ export async function quickLogHours(
   return { ok: true };
 }
 
+// ---------------------------------------------------------------------------
+// Registro de horas por requerimiento — sólo ADMIN.
+// Se cargan a medida que se trabaja (fecha, horas, observación) y se suman a
+// las horas utilizadas. Los requerimientos finalizados quedan como están.
+// ---------------------------------------------------------------------------
+const reqHoursSchema = z.object({
+  requirement_id: z.string().uuid(),
+  entry_date: z.string().min(1, "La fecha es obligatoria"),
+  hours: z.coerce.number().positive("Las horas deben ser mayores a 0"),
+  description: z.preprocess(emptyToNull, z.string().trim().nullable()),
+});
+
+/** true si el requerimiento está en un estado final (no admite cambios de horas). */
+async function isRequirementFinal(supabase: ReturnType<typeof createClient>, requirementId: string) {
+  const { data } = await supabase
+    .from("requirements")
+    .select("status:req_statuses(is_final)")
+    .eq("id", requirementId)
+    .single();
+  return !!(data as any)?.status?.is_final;
+}
+
+function revalidateHours(requirementId: string) {
+  revalidatePath(`/tracking/${requirementId}`);
+  revalidatePath("/tracking");
+  revalidatePath("/backlog");
+  revalidatePath("/sprints");
+  revalidatePath("/horas");
+  revalidatePath("/");
+  clearReadCache();
+}
+
+export async function logRequirementHours(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  if ((await currentProfileRole()) !== "ADMIN") return NO_PERMISSION;
+  const parsed = reqHoursSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { ok: false, error: parsed.error.errors[0]?.message ?? "Datos inválidos" };
+  const supabase = createClient();
+  const { requirement_id } = parsed.data;
+  if (await isRequirementFinal(supabase, requirement_id)) {
+    return { ok: false, error: "El requerimiento está finalizado: sus horas no se modifican." };
+  }
+  // Las horas cuentan en el sprint al que está asignado el requerimiento.
+  const { data: link } = await supabase
+    .from("sprint_requirements")
+    .select("sprint_id")
+    .eq("requirement_id", requirement_id)
+    .limit(1)
+    .maybeSingle();
+  const { error } = await supabase.from("time_entries").insert({
+    ...parsed.data,
+    project_id: await getProjectId(),
+    sprint_id: (link as any)?.sprint_id ?? null,
+    created_by: await currentProfileId(),
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidateHours(requirement_id);
+  return { ok: true };
+}
+
+export async function deleteRequirementTimeEntry(id: string, requirementId: string) {
+  if ((await currentProfileRole()) !== "ADMIN") return NO_PERMISSION;
+  const supabase = createClient();
+  if (await isRequirementFinal(supabase, requirementId)) {
+    return { ok: false, error: "El requerimiento está finalizado: sus horas no se modifican." };
+  }
+  const { error } = await supabase.from("time_entries").delete().eq("id", id).eq("requirement_id", requirementId);
+  if (error) return { ok: false, error: error.message };
+  revalidateHours(requirementId);
+  return { ok: true };
+}
+
 export async function addContractedHours(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
   const schema = z.object({
     entry_date: z.string().min(1),
