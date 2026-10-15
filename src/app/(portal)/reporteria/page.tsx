@@ -21,12 +21,13 @@ export default async function ReporteriaPage() {
   sprints.forEach((s) =>
     bySprintGroups.set(s.id, {
       id: s.id, name: s.name, status: s.status, startDate: s.start_date, targetDate: s.target_date,
+      contracted: s.contracted_hours != null ? Number(s.contracted_hours) : null,
       estimated: 0, consumed: 0, requirements: [],
     })
   );
   const unassigned: SprintReport = {
     id: "none", name: "Sin asignar", status: null, startDate: null, targetDate: null,
-    estimated: 0, consumed: 0, requirements: [],
+    contracted: null, estimated: 0, consumed: 0, requirements: [],
   };
   requirements.forEach((r) => {
     const group = (r.sprint?.id && bySprintGroups.get(r.sprint.id)) || unassigned;
