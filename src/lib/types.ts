@@ -87,6 +87,7 @@ export interface Sprint {
   start_date: string | null;
   target_date: string | null;
   status: "Planificado" | "Activo" | "Finalizado" | "Pausado";
+  contracted_hours?: number | null;
   estimated_hours?: number;
   consumed_hours?: number;
   requirement_count?: number;

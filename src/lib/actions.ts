@@ -822,6 +822,17 @@ export async function setContractedObservation(id: string, observation: string) 
   return { ok: true };
 }
 
+export async function setSprintContractedHours(id: string, hours: number | null) {
+  if (await isClientUser()) return NO_PERMISSION;
+  if (hours !== null && (!Number.isFinite(hours) || hours < 0)) return { ok: false, error: "Horas inválidas" };
+  const supabase = createClient();
+  const { error } = await supabase.from("sprints").update({ contracted_hours: hours }).eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  clearReadCache();
+  revalidatePath("/reporteria");
+  return { ok: true };
+}
+
 export async function deleteSprint(id: string) {
   if (await isClientUser()) return NO_PERMISSION;
   const supabase = createClient();

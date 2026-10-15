@@ -54,7 +54,7 @@ export function ReporteriaClient({
     <div>
       <PageHeader title="Reportería" subtitle="Reportes ejecutivos del servicio" />
 
-      <ReportPdf clientName={clientName} hours={hours} sprintReport={sprintReport} defaultSprintId={defaultSprintId} />
+      <ReportPdf clientName={clientName} sprintReport={sprintReport} defaultSprintId={defaultSprintId} />
 
       <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Requerimientos" value={totals.total} accent="#0B1E3F" />
